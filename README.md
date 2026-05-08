@@ -4,7 +4,7 @@
 >
 > A Claude Code plugin that bundles your `CLAUDE.md`, skills, slash commands, and sub-agents into a portable **loadout** any other Claude Code user can install with one command.
 
-[![status](https://img.shields.io/badge/status-v0.1-amber)](#status--roadmap) [![tests](https://img.shields.io/badge/tests-55%20passing-green)](#development) [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+[![ci](https://github.com/TusharKarkera22/claude-loadout/actions/workflows/ci.yml/badge.svg)](https://github.com/TusharKarkera22/claude-loadout/actions/workflows/ci.yml) [![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE) [![node](https://img.shields.io/badge/node-%3E%3D20.10-blue)](./package.json)
 
 ![Claude Loadout — one author publishes a loadout, many teammates adopt it](./docs/hero.png)
 

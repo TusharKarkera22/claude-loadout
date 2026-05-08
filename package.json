@@ -17,6 +17,14 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TusharKarkera22/claude-loadout.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TusharKarkera22/claude-loadout/issues"
+  },
+  "homepage": "https://github.com/TusharKarkera22/claude-loadout#readme",
   "dependencies": {
     "fast-glob": "^3.3.2",
     "simple-git": "^3.27.0",
