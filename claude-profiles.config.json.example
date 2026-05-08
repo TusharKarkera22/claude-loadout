@@ -1,0 +1,39 @@
+{
+  "$schema": "./schema/claude-profiles.config.schema.json",
+  "modules": {
+    "export": { "enabled": true },
+    "sanitize": { "enabled": true },
+    "install": { "enabled": true },
+    "manage": { "enabled": true }
+  },
+  "export": {
+    "outputDir": "./my-profile",
+    "include": {
+      "claudeMd": true,
+      "skills": true,
+      "commands": true,
+      "agents": true,
+      "hooks": false
+    }
+  },
+  "sanitize": {
+    "allow": [],
+    "deny": [
+      "AKIA[0-9A-Z]{16}",
+      "ghp_[A-Za-z0-9]{36,}",
+      "sk-ant-[A-Za-z0-9_-]{40,}",
+      "sk-[A-Za-z0-9]{32,}"
+    ],
+    "redactAbsolutePaths": true,
+    "redactEnvAssignments": true
+  },
+  "install": {
+    "profilesDir": ".claude-profiles",
+    "namespacePrefix": "@",
+    "allowHookImport": false
+  },
+  "author": {
+    "handle": "your-github-handle",
+    "displayName": "Your Name"
+  }
+}

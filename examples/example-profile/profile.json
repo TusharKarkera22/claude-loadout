@@ -1,0 +1,29 @@
+{
+  "$schema": "../../schema/profile.schema.json",
+  "schemaVersion": 1,
+  "name": "example-profile",
+  "author": {
+    "handle": "tushar",
+    "displayName": "Tushar"
+  },
+  "version": "0.1.0",
+  "description": "Reference profile demonstrating the claude-profiles bundle format. Replace with your own setup.",
+  "claudeCodeMinVersion": "1.0.0",
+  "items": [
+    {
+      "type": "skill",
+      "path": "skills/example-skill/SKILL.md",
+      "description": "A placeholder skill to illustrate the bundle layout."
+    },
+    {
+      "type": "command",
+      "path": "commands/example-command.md",
+      "description": "A placeholder slash command."
+    }
+  ],
+  "dependencies": {
+    "mcpServers": []
+  },
+  "createdAt": "2026-05-08T00:00:00Z",
+  "tags": ["example", "reference"]
+}

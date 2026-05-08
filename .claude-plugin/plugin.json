@@ -1,0 +1,16 @@
+{
+  "name": "claude-profiles",
+  "version": "0.1.0-pre",
+  "description": "Share your Claude Code setup like dotfiles. Bundle and install profiles of CLAUDE.md, skills, slash commands, and sub-agents.",
+  "author": {
+    "name": "Tushar"
+  },
+  "homepage": "https://github.com/tushar/claude-profiles",
+  "keywords": [
+    "profiles",
+    "dotfiles",
+    "share",
+    "team",
+    "onboarding"
+  ]
+}
