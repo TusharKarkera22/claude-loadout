@@ -56,11 +56,26 @@ On the adopter's disk, an installed loadout looks like this:
 
 ---
 
-## Quickstart
+## Install in Claude Code
+
+Run these two commands inside any Claude Code session:
+
+```text
+/plugin marketplace add TusharKarkera22/claude-loadout
+/plugin install claude-loadout@claude-loadout
+```
+
+The first line registers this repo as a one-plugin marketplace, the second installs the plugin from it. After that, `/loadout export`, `/loadout install`, and the rest are available as native slash commands.
+
+> Plugins can run code on your machine. Read [`SECURITY.md`](./SECURITY.md) before installing anything from a stranger.
+
+---
+
+## Quickstart (clone-and-build, for hacking on the source)
 
 ```bash
 # 1. Setup
-git clone <this repo> && cd claude-loadout
+git clone https://github.com/TusharKarkera22/claude-loadout.git && cd claude-loadout
 npm install
 npm run build
 

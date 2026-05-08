@@ -1,0 +1,17 @@
+{
+  "name": "claude-loadout",
+  "owner": {
+    "name": "Tushar Karkera",
+    "url": "https://github.com/TusharKarkera22"
+  },
+  "description": "One-plugin marketplace for Claude Loadout. Lets Claude Code users install the plugin via /plugin install claude-loadout@claude-loadout.",
+  "plugins": [
+    {
+      "name": "claude-loadout",
+      "source": "./",
+      "version": "0.1.0",
+      "description": "Share your Claude Code setup like dotfiles. Bundle CLAUDE.md, skills, slash commands, and sub-agents into a portable loadout teammates can install in one command.",
+      "homepage": "https://github.com/TusharKarkera22/claude-loadout"
+    }
+  ]
+}
