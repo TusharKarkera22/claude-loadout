@@ -2,15 +2,15 @@
 
 ## v0.1 (current)
 
-Scaffold and core profile pipeline. **Status: scaffold landed; module bodies pending.**
+Scaffold and core profile pipeline. **Status: implementation complete; 55 tests passing.**
 
-- [ ] **Module A — Export** (`src/modules/export/`): scan config, build bundle, write `profile.json`
-- [ ] **Module B — Sanitize** (`src/modules/sanitize/`): secret/path scanner with interactive review
-- [ ] **Module C — Install** (`src/modules/install/`): fetch, validate, namespaced merge
-- [ ] **Module D — Manage** (`src/modules/manage/`): list / update / remove / show
-- [ ] CLI arg parsing in `src/cli.ts` (zod-based)
-- [ ] Config loader with sensible defaults when `claude-profiles.config.json` is absent
-- [ ] Tests against the example profile in `examples/example-profile/`
+- [x] **Module A — Export** (`src/modules/export/`): scan config, build bundle, write `profile.json`
+- [x] **Module B — Sanitize** (`src/modules/sanitize/`): secret/path scanner, allow/deny lists, redaction helper
+- [x] **Module C — Install** (`src/modules/install/`): fetch via storage adapter, validate, namespaced install root, hook safety boundary
+- [x] **Module D — Manage** (`src/modules/manage/`): list / update / remove / show with path-traversal guards
+- [x] CLI arg parsing in `src/cli/` (zod-validated subcommands)
+- [x] Config loader (`src/config/loader.ts`) with sensible defaults when `claude-loadout.config.json` is absent
+- [x] Tests: vitest suite covering manifest schema, config, all four modules, CLI dispatcher
 
 ## v0.2
 

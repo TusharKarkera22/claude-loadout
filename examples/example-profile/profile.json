@@ -7,7 +7,7 @@
     "displayName": "Tushar"
   },
   "version": "0.1.0",
-  "description": "Reference profile demonstrating the claude-profiles bundle format. Replace with your own setup.",
+  "description": "Reference profile demonstrating the claude-loadout bundle format. Replace with your own setup.",
   "claudeCodeMinVersion": "1.0.0",
   "items": [
     {

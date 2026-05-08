@@ -1,6 +1,6 @@
 # example-profile
 
-Reference layout for a published `claude-profiles` profile. Copy this structure when authoring your own.
+Reference layout for a published `claude-loadout` loadout. Copy this structure when authoring your own.
 
 ```
 example-profile/

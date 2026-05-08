@@ -4,7 +4,12 @@ dist/
 .DS_Store
 .env
 .env.local
+.claude-loadout/
 .claude-profiles/
+my-loadout/
 my-profile/
 .cache/
 coverage/
+.vscode/
+.idea/
+*.tsbuildinfo

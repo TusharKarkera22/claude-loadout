@@ -28,7 +28,7 @@
     "redactEnvAssignments": true
   },
   "install": {
-    "profilesDir": ".claude-profiles",
+    "profilesDir": ".claude-loadout",
     "namespacePrefix": "@",
     "allowHookImport": false
   },

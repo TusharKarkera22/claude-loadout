@@ -21,7 +21,7 @@ export class GitStorageAdapter implements StorageAdapter {
 
   async fetch(source: string, options: FetchOptions = {}): Promise<FetchResult> {
     const url = resolveSource(source);
-    const dir = await mkdtemp(join(tmpdir(), "claude-profiles-"));
+    const dir = await mkdtemp(join(tmpdir(), "claude-loadout-"));
     const git = simpleGit();
     const cloneArgs = options.shallow ? ["--depth", "1"] : [];
     if (options.ref) cloneArgs.push("--branch", options.ref);

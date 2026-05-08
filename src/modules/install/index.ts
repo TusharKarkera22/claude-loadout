@@ -1,5 +1,12 @@
+import { copyFile, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type { StorageAdapter } from "../../adapters/storage.interface.js";
-import type { ProfileManifest } from "../../manifest/schema.js";
+import {
+  ProfileItemSchema,
+  type ProfileItem,
+  type ProfileManifest,
+} from "../../manifest/schema.js";
+import { loadManifest } from "../../manifest/validator.js";
 
 export interface InstallOptions {
   source: string;
@@ -10,29 +17,199 @@ export interface InstallOptions {
   alias?: string;
   ref?: string;
   yes?: boolean;
+  /**
+   * Optional Claude Code version of the host. When provided, install fails
+   * if the manifest's claudeCodeMinVersion is greater than this value.
+   */
+  claudeCodeVersion?: string;
 }
 
 export interface InstallResult {
   manifest: ProfileManifest;
+  alias: string;
   installedAt: string;
   resolvedRef: string;
   importedItems: number;
   skippedItems: number;
+  installRoot: string;
+}
+
+export interface InstallMetadata {
+  alias: string;
+  source: string;
+  resolvedRef: string;
+  installedAt: string;
+  manifestVersion: string;
+}
+
+const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-[A-Za-z0-9.-]+)?$/;
+
+function compareSemver(a: string, b: string): number {
+  const ma = SEMVER.exec(a);
+  const mb = SEMVER.exec(b);
+  if (!ma || !mb) {
+    throw new Error(`Cannot compare versions: "${a}" vs "${b}"`);
+  }
+  for (let i = 1; i <= 3; i++) {
+    const ai = Number(ma[i]);
+    const bi = Number(mb[i]);
+    if (ai !== bi) return ai < bi ? -1 : 1;
+  }
+  return 0;
+}
+
+function defaultAlias(manifest: ProfileManifest): string {
+  return `${manifest.author.handle}-${manifest.name}`;
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function copyTree(src: string, dst: string): Promise<void> {
+  const s = await stat(src);
+  if (s.isDirectory()) {
+    await mkdir(dst, { recursive: true });
+    for (const entry of await readdir(src)) {
+      await copyTree(join(src, entry), join(dst, entry));
+    }
+  } else if (s.isFile()) {
+    await mkdir(dirname(dst), { recursive: true });
+    await copyFile(src, dst);
+  }
+}
+
+function partitionItems(
+  items: ProfileItem[],
+  allowHookImport: boolean,
+): { imported: ProfileItem[]; skipped: ProfileItem[] } {
+  const imported: ProfileItem[] = [];
+  const skipped: ProfileItem[] = [];
+  for (const item of items) {
+    // Defensive validation in case manifest came from untrusted source.
+    const parsed = ProfileItemSchema.parse(item);
+    if (parsed.type === "hook" && !allowHookImport) {
+      skipped.push(parsed);
+    } else {
+      imported.push(parsed);
+    }
+  }
+  return { imported, skipped };
 }
 
 /**
  * Module C — Profile Install.
  *
- * TODO(v0.1):
- *   1. storage.fetch(source, { shallow: true, ref }) -> tmp dir.
- *   2. loadManifest(<tmp>/profile.json); validate Claude Code version compat.
- *   3. Detect collisions in profilesDir; prompt for --as <alias> if needed.
- *   4. Show plan (added items, namespaced names) and confirm unless yes === true.
- *   5. Move bundle to profilesDir/<author-handle>-<name>/.
- *   6. Register namespaced aliases (skills/commands/agents) in active config.
- *   7. SAFETY: skip items[].type === "hook" unless allowHookImport === true.
- *   8. Surface CLAUDE.md as @author/CLAUDE.md, do NOT auto-merge.
+ * v0.1 safety boundary: declarative items only. Hook items are skipped unless
+ * allowHookImport is explicitly true. Imported CLAUDE.md is copied into the
+ * install root but is NOT merged into the user's own CLAUDE.md — the namespace
+ * is preserved by directory location (.claude-loadout/<alias>/CLAUDE.md).
  */
-export async function installProfile(_options: InstallOptions): Promise<InstallResult> {
-  throw new Error("installProfile: not implemented in v0.1 scaffold");
+export async function installProfile(
+  options: InstallOptions,
+): Promise<InstallResult> {
+  let fetched: { localPath: string; resolvedRef: string } | undefined;
+  try {
+    fetched = await options.storage.fetch(options.source, {
+      shallow: true,
+      ...(options.ref && { ref: options.ref }),
+    });
+
+    const manifestPath = join(fetched.localPath, "profile.json");
+    const validation = await loadManifest(manifestPath);
+    if (!validation.ok) {
+      throw new Error(
+        `Invalid profile.json at ${options.source}: ${validation.errors.join("; ")}`,
+      );
+    }
+    const manifest = validation.manifest;
+
+    if (
+      manifest.claudeCodeMinVersion &&
+      options.claudeCodeVersion &&
+      compareSemver(options.claudeCodeVersion, manifest.claudeCodeMinVersion) < 0
+    ) {
+      throw new Error(
+        `Profile requires Claude Code >= ${manifest.claudeCodeMinVersion}; ` +
+          `host reports ${options.claudeCodeVersion}. Upgrade and retry.`,
+      );
+    }
+
+    const alias = options.alias ?? defaultAlias(manifest);
+    const installRoot = join(options.profilesDir, alias);
+    if (await pathExists(installRoot)) {
+      throw new Error(
+        `Profile alias "${alias}" already installed at ${installRoot}. ` +
+          `Use --as <alias> to install side-by-side, or remove the existing one first.`,
+      );
+    }
+
+    const { imported, skipped } = partitionItems(
+      manifest.items,
+      options.allowHookImport,
+    );
+
+    await mkdir(installRoot, { recursive: true });
+
+    // Copy declared items (validated paths only — never copy whole bundle blindly).
+    for (const item of imported) {
+      const src = join(fetched.localPath, item.path);
+      const dst = join(installRoot, item.path);
+      if (!(await pathExists(src))) {
+        throw new Error(
+          `Manifest references missing file: ${item.path}. Refusing partial install.`,
+        );
+      }
+      const s = await stat(src);
+      if (s.isDirectory()) {
+        await copyTree(src, dst);
+      } else {
+        await mkdir(dirname(dst), { recursive: true });
+        await copyFile(src, dst);
+      }
+    }
+
+    // Persist the manifest itself so manage commands don't need to re-fetch.
+    await copyFile(manifestPath, join(installRoot, "profile.json"));
+
+    const installedAt = new Date().toISOString();
+    const meta: InstallMetadata = {
+      alias,
+      source: options.source,
+      resolvedRef: fetched.resolvedRef,
+      installedAt,
+      manifestVersion: manifest.version,
+    };
+    await writeFile(
+      join(installRoot, ".install.json"),
+      `${JSON.stringify(meta, null, 2)}\n`,
+      "utf8",
+    );
+
+    return {
+      manifest,
+      alias,
+      installedAt,
+      resolvedRef: fetched.resolvedRef,
+      importedItems: imported.length,
+      skippedItems: skipped.length,
+      installRoot,
+    };
+  } finally {
+    // Best-effort cleanup of the fetch tmp dir. Adapter's own cleanup is
+    // optional; we own the tmp once it's been handed back.
+    if (fetched) {
+      const adapter = options.storage as { cleanup?: (p: string) => Promise<void> };
+      if (typeof adapter.cleanup === "function") {
+        await adapter.cleanup(fetched.localPath).catch(() => {});
+      } else {
+        await rm(fetched.localPath, { recursive: true, force: true }).catch(() => {});
+      }
+    }
+  }
 }
