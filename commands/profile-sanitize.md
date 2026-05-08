@@ -4,5 +4,5 @@ argument-hint: "<bundle-dir>"
 ---
 
 ```bash
-npx tsx src/cli.ts sanitize $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js" sanitize $ARGUMENTS
 ```

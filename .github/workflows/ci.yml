@@ -27,3 +27,10 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: dist/ is in sync with src/
+        run: |
+          if ! git diff --quiet --exit-code dist/; then
+            echo "::error::dist/ is stale. Run 'npm run build' and commit the result."
+            git --no-pager diff --stat dist/
+            exit 1
+          fi

@@ -6,6 +6,19 @@ All notable changes will be documented here. The format is based on [Keep a Chan
 
 _No changes yet._
 
+## [0.1.1] — Slash commands work after install + user-scope export
+
+### Fixed
+- **Slash commands now work for users who installed via `/plugin install`.** Previously every command body called `npx tsx src/cli.ts …`, which only worked inside the project's source tree. Real users who installed via marketplace had no `src/cli.ts` on disk, so every slash command failed silently. Commands now invoke `node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js"` — Claude Code injects `CLAUDE_PLUGIN_ROOT` to point at the plugin install path, and the compiled CLI ships with the bundle.
+- `dist/` is now committed to the repo because it is the runtime artifact every installed plugin needs. CI guards against drift via `git diff --exit-code dist/` after `npm run build`.
+
+### Added
+- `--scope user|project` flag on `claude-loadout export`. Default `project` keeps the existing behavior (looks under `<source>/.claude/skills/` etc.). New `user` scope walks `<source>/skills/` directly — the layout of `~/.claude/`. When `--scope user` is set without `--source`, the source defaults to `~/.claude/`.
+- A stderr warning when `--scope user` runs, reminding the user that everything in `~/.claude/skills/` may include items installed by other plugins. Manual review before publishing remains required.
+
+### Notes
+Found by dogfooding the v0.1.0 release: invoking `/claude-loadout:profile-export` from a real Claude Code session surfaced both bugs at once.
+
 ## [0.1.0] — Initial release
 
 ### Added

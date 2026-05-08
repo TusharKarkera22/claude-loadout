@@ -1,3 +1,5 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { z } from "zod";
 import { exportProfile } from "../../modules/export/index.js";
 import { sanitizeBundle } from "../../modules/sanitize/index.js";
@@ -5,13 +7,14 @@ import type { Config } from "../../config/loader.js";
 import type { ParsedFlags } from "../parse-args.js";
 
 const Schema = z.object({
-  source: z.string().default("."),
+  source: z.string().optional(),
   out: z.string().optional(),
   name: z.string().min(1),
   version: z.string().default("0.1.0"),
   description: z.string().min(1),
   author: z.string().optional(),
   "display-name": z.string().optional(),
+  scope: z.enum(["project", "user"]).default("project"),
   "claude-md": z.union([z.boolean(), z.string()]).optional(),
   skills: z.union([z.boolean(), z.string()]).optional(),
   commands: z.union([z.boolean(), z.string()]).optional(),
@@ -48,9 +51,18 @@ export async function runExport(
     hooks: bool(flags["include-hooks"], config.export.include.hooks),
   };
 
+  // Source defaults: scope=user → ~/.claude (the user-level config root);
+  // scope=project → cwd. Explicit --source always wins.
+  const defaultSource =
+    flags.scope === "user"
+      ? join(homedir(), ".claude")
+      : ".";
+  const sourceDir = flags.source ?? defaultSource;
+
   const result = await exportProfile({
-    sourceDir: flags.source,
+    sourceDir,
     outputDir: flags.out ?? config.export.outputDir,
+    scope: flags.scope,
     include,
     author: {
       handle,
@@ -63,6 +75,13 @@ export async function runExport(
     version: flags.version,
     description: flags.description,
   });
+
+  if (flags.scope === "user") {
+    process.stderr.write(
+      "note: --scope user includes everything under ~/.claude/skills|commands|agents.\n" +
+        "Some of those items may have been installed by other plugins. Review the bundle before publishing.\n",
+    );
+  }
 
   if (!bool(flags["skip-sanitize"], false)) {
     const findings = await sanitizeBundle(result.outputDir, config.sanitize);

@@ -4,5 +4,5 @@ argument-hint: "<alias>"
 ---
 
 ```bash
-npx tsx src/cli.ts remove $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js" remove $ARGUMENTS
 ```

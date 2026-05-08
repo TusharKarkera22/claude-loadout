@@ -4,7 +4,7 @@ argument-hint: "<owner/repo | git-url> [--ref <branch-or-tag>] [--as <alias>] [-
 ---
 
 ```bash
-npx tsx src/cli.ts install $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js" install $ARGUMENTS
 ```
 
 Confirm what is being added before writing files. Refuse to import items of type `hook` unless the user has set `install.allowHookImport: true` in `claude-loadout.config.json`.

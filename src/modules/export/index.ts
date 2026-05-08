@@ -7,9 +7,19 @@ import {
   type ProfileManifest,
 } from "../../manifest/schema.js";
 
+/**
+ * Source layout the export module walks.
+ * - "project": looks under `<source>/.claude/skills/`, etc. — the layout every
+ *   Claude Code project repo uses.
+ * - "user":    looks under `<source>/skills/`, etc. — the layout of the
+ *   user-level config at `~/.claude/`.
+ */
+export type ExportScope = "project" | "user";
+
 export interface ExportOptions {
   sourceDir: string;
   outputDir: string;
+  scope?: ExportScope;
   include: {
     claudeMd: boolean;
     skills: boolean;
@@ -39,37 +49,46 @@ interface DiscoveredItem {
   bundleRelPath: string;
 }
 
-const ITEM_TYPE_DIRS: Array<{
+interface ItemTypeDef {
   type: Exclude<ProfileItem["type"], "claude-md">;
-  sourceDir: string;
+  /** subdir to scan under "project" scope (relative to sourceDir) */
+  projectDir: string;
+  /** subdir to scan under "user" scope (relative to sourceDir) */
+  userDir: string;
   bundleDir: string;
   globs: string[];
   toggle: keyof ExportOptions["include"];
-}> = [
+}
+
+const ITEM_TYPE_DIRS: ItemTypeDef[] = [
   {
     type: "skill",
-    sourceDir: ".claude/skills",
+    projectDir: ".claude/skills",
+    userDir: "skills",
     bundleDir: "skills",
     globs: ["**/*"],
     toggle: "skills",
   },
   {
     type: "command",
-    sourceDir: ".claude/commands",
+    projectDir: ".claude/commands",
+    userDir: "commands",
     bundleDir: "commands",
     globs: ["**/*.md"],
     toggle: "commands",
   },
   {
     type: "agent",
-    sourceDir: ".claude/agents",
+    projectDir: ".claude/agents",
+    userDir: "agents",
     bundleDir: "agents",
     globs: ["**/*.md"],
     toggle: "agents",
   },
   {
     type: "hook",
-    sourceDir: ".claude/hooks",
+    projectDir: ".claude/hooks",
+    userDir: "hooks",
     bundleDir: "hooks",
     globs: ["**/*"],
     toggle: "hooks",
@@ -103,6 +122,7 @@ async function discoverItems(
   options: ExportOptions,
 ): Promise<DiscoveredItem[]> {
   const items: DiscoveredItem[] = [];
+  const scope: ExportScope = options.scope ?? "project";
 
   if (options.include.claudeMd) {
     const claudeMd = join(options.sourceDir, "CLAUDE.md");
@@ -117,7 +137,8 @@ async function discoverItems(
 
   for (const def of ITEM_TYPE_DIRS) {
     if (!options.include[def.toggle]) continue;
-    const absDir = join(options.sourceDir, def.sourceDir);
+    const sourceSubdir = scope === "user" ? def.userDir : def.projectDir;
+    const absDir = join(options.sourceDir, sourceSubdir);
     const matches = await fastGlob(def.globs, {
       cwd: absDir,
       onlyFiles: true,
@@ -127,7 +148,7 @@ async function discoverItems(
     for (const rel of matches) {
       items.push({
         type: def.type,
-        sourceRelPath: toPosix(join(def.sourceDir, rel)),
+        sourceRelPath: toPosix(join(sourceSubdir, rel)),
         bundleRelPath: toPosix(join(def.bundleDir, rel)),
       });
     }

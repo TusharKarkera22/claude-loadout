@@ -1,5 +1,7 @@
 node_modules/
-dist/
+# dist/ is committed: it's the runtime artifact slash commands invoke as
+# ${CLAUDE_PLUGIN_ROOT}/dist/cli.js after `/plugin install`. CI guards
+# against drift via `npm run build && git diff --exit-code dist/`.
 *.log
 .DS_Store
 .env
