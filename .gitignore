@@ -1,7 +1,8 @@
 node_modules/
-# dist/ is committed: it's the runtime artifact slash commands invoke as
-# ${CLAUDE_PLUGIN_ROOT}/dist/cli.js after `/plugin install`. CI guards
-# against drift via `npm run build && git diff --exit-code dist/`.
+# dist/ is local-only — typecheck output, not the runtime artifact.
+# The actual runtime artifact slash commands invoke is bin/cli.cjs
+# (a single self-contained esbuild bundle). CI guards against bin/ drift.
+dist/
 *.log
 .DS_Store
 .env

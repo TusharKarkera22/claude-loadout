@@ -6,5 +6,5 @@ argument-hint: "[--scope user|project] [--name <slug>] [--description <text>] [-
 Run the `claude-loadout` export pipeline. Inform the user about each finding from the sanitize pass and confirm before writing the bundle.
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js" export $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/cli.cjs" export $ARGUMENTS
 ```

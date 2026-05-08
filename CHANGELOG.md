@@ -6,6 +6,16 @@ All notable changes will be documented here. The format is based on [Keep a Chan
 
 _No changes yet._
 
+## [0.1.2] — Self-contained runtime bundle
+
+### Fixed
+- **Slash commands actually run after `/plugin install`** (no, really this time). v0.1.1 committed `dist/` so `node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js"` would find the entrypoint — but the entrypoint imports `zod`, `fast-glob`, and `simple-git`, and Claude Code's plugin install does a `git clone` without running `npm install`. Result: every command failed with `ERR_MODULE_NOT_FOUND` on first import. v0.1.2 ships a single self-contained CJS bundle at `bin/cli.cjs` (esbuild, all deps inlined, ~508 KB) that runs with zero `node_modules` access. Slash commands now invoke `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.cjs"`.
+
+### Changed
+- `npm run build` now runs `tsc` (for `.d.ts` and typecheck) **and** `npm run bundle` (esbuild → `bin/cli.cjs`).
+- `dist/` is back to being gitignored — it's local-only typecheck output, not the runtime artifact.
+- CI gained a freshness check on `bin/` and a "runs outside the repo" smoke test that copies the bundle to `$RUNNER_TEMP` and confirms it boots without `node_modules`.
+
 ## [0.1.1] — Slash commands work after install + user-scope export
 
 ### Fixed

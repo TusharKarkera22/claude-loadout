@@ -27,10 +27,16 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      - name: dist/ is in sync with src/
+      - name: bin/cli.cjs is in sync with src/
         run: |
-          if ! git diff --quiet --exit-code dist/; then
-            echo "::error::dist/ is stale. Run 'npm run build' and commit the result."
-            git --no-pager diff --stat dist/
+          if ! git diff --quiet --exit-code bin/; then
+            echo "::error::bin/cli.cjs is stale. Run 'npm run build' and commit the result."
+            git --no-pager diff --stat bin/
             exit 1
           fi
+      - name: bundle is self-contained (runs without node_modules)
+        run: |
+          cp bin/cli.cjs "$RUNNER_TEMP/cl-test.cjs"
+          cd "$RUNNER_TEMP"
+          node cl-test.cjs 2>&1 | grep -q 'claude-loadout <subcommand>' \
+            || (echo "::error::bin/cli.cjs failed when run outside the repo" && exit 1)

@@ -4,5 +4,5 @@ argument-hint: "<alias>"
 ---
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js" show $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/cli.cjs" show $ARGUMENTS
 ```

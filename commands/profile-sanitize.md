@@ -4,5 +4,5 @@ argument-hint: "<bundle-dir>"
 ---
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js" sanitize $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/bin/cli.cjs" sanitize $ARGUMENTS
 ```

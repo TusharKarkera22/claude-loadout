@@ -3,5 +3,5 @@ description: List installed Claude Code profiles (alias, author, version, instal
 ---
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/dist/cli.js" list
+node "${CLAUDE_PLUGIN_ROOT}/bin/cli.cjs" list
 ```

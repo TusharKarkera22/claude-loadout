@@ -1,6 +1,6 @@
 {
   "name": "claude-loadout",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Claude Loadout — share your Claude Code setup like dotfiles. Bundle and install loadouts of CLAUDE.md, skills, slash commands, and sub-agents.",
   "license": "MIT",
   "type": "module",
@@ -8,10 +8,11 @@
     "node": ">=20.10.0"
   },
   "bin": {
-    "claude-loadout": "./dist/cli.js"
+    "claude-loadout": "./bin/cli.cjs"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run bundle",
+    "bundle": "esbuild src/cli.ts --bundle --platform=node --target=node20 --format=cjs --outfile=bin/cli.cjs && chmod +x bin/cli.cjs",
     "dev": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.18",
+    "esbuild": "^0.28.0",
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
     "vitest": "^4.1.5"
