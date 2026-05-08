@@ -4,10 +4,17 @@ export const SemverSchema = z
   .string()
   .regex(/^\d+\.\d+\.\d+(-[A-Za-z0-9.-]+)?$/, "must be semver");
 
+export const ProvenanceSchema = z.object({
+  source: z.enum(["user", "plugin"]),
+  marketplace: z.string().optional(),
+  plugin: z.string().optional(),
+});
+
 export const ProfileItemSchema = z.object({
   type: z.enum(["skill", "command", "agent", "claude-md", "hook"]),
   path: z.string(),
   description: z.string().optional(),
+  provenance: ProvenanceSchema.optional(),
 });
 
 export const ProfileManifestSchema = z.object({
@@ -33,3 +40,4 @@ export const ProfileManifestSchema = z.object({
 
 export type ProfileManifest = z.infer<typeof ProfileManifestSchema>;
 export type ProfileItem = z.infer<typeof ProfileItemSchema>;
+export type Provenance = z.infer<typeof ProvenanceSchema>;

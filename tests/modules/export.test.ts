@@ -230,6 +230,48 @@ describe("exportProfile", () => {
     expect(await exists(join(outputDir, "skills/x/SKILL.md"))).toBe(true);
   });
 
+  test("scope='user' annotates skills with plugin provenance when given a provenance map", async () => {
+    const sourceDir = await tmp();
+    await writeTree(sourceDir, {
+      "skills/frontend-design/SKILL.md": "x",
+      "skills/my-custom/SKILL.md": "x",
+    });
+    const outputDir = join(await tmp(), "bundle");
+
+    const result = await exportProfile({
+      sourceDir,
+      outputDir,
+      scope: "user",
+      pluginProvenance: new Map([
+        ["frontend-design", { marketplace: "official", plugin: "frontend-design" }],
+      ]),
+      include: {
+        claudeMd: false,
+        skills: true,
+        commands: false,
+        agents: false,
+        hooks: false,
+      },
+      author: { handle: "tushar" },
+      name: "n",
+      version: "0.0.1",
+      description: "d",
+    });
+
+    expect(result.itemCount).toBe(2);
+    const items = result.manifest.items;
+    const fd = items.find((i) => i.path.includes("frontend-design"));
+    const my = items.find((i) => i.path.includes("my-custom"));
+    expect(fd?.provenance).toEqual({
+      source: "plugin",
+      marketplace: "official",
+      plugin: "frontend-design",
+    });
+    expect(my?.provenance).toEqual({ source: "user" });
+    expect(result.userAuthoredCount).toBe(1);
+    expect(result.pluginDerivedCount).toBe(1);
+  });
+
   test("creates manifest with empty items[] when nothing matches", async () => {
     const sourceDir = await tmp();
     const outputDir = join(await tmp(), "bundle");

@@ -5,7 +5,9 @@ import {
   ProfileManifestSchema,
   type ProfileItem,
   type ProfileManifest,
+  type Provenance,
 } from "../../manifest/schema.js";
+import type { ProvenanceInfo } from "./provenance.js";
 
 /**
  * Source layout the export module walks.
@@ -20,6 +22,13 @@ export interface ExportOptions {
   sourceDir: string;
   outputDir: string;
   scope?: ExportScope;
+  /**
+   * Optional map from skill name → plugin source. When provided (typically
+   * built by detectPluginProvenance), each manifest item gets a `provenance`
+   * field tagging it as `user` or `plugin` with marketplace/plugin metadata.
+   * Behaviour is unchanged otherwise — items are still bundled either way.
+   */
+  pluginProvenance?: Map<string, ProvenanceInfo>;
   include: {
     claudeMd: boolean;
     skills: boolean;
@@ -39,6 +48,8 @@ export interface ExportResult {
   manifest: ProfileManifest;
   outputDir: string;
   itemCount: number;
+  userAuthoredCount: number;
+  pluginDerivedCount: number;
 }
 
 interface DiscoveredItem {
@@ -47,6 +58,30 @@ interface DiscoveredItem {
   sourceRelPath: string;
   /** path relative to outputDir */
   bundleRelPath: string;
+  /** filled in for skills when a plugin-provenance map is supplied */
+  provenance?: Provenance;
+}
+
+function provenanceForSkill(
+  bundleRelPath: string,
+  map: Map<string, ProvenanceInfo> | undefined,
+): Provenance {
+  if (!map) return { source: "user" };
+  // bundleRelPath is "skills/<skill-name>/..."; the directory immediately
+  // after "skills/" is the skill name we look up.
+  const segments = bundleRelPath.split("/");
+  const skillName = segments[1];
+  if (skillName && map.has(skillName)) {
+    const info = map.get(skillName);
+    if (info) {
+      return {
+        source: "plugin",
+        marketplace: info.marketplace,
+        plugin: info.plugin,
+      };
+    }
+  }
+  return { source: "user" };
 }
 
 interface ItemTypeDef {
@@ -146,11 +181,19 @@ async function discoverItems(
     });
     matches.sort();
     for (const rel of matches) {
-      items.push({
+      const bundleRelPath = toPosix(join(def.bundleDir, rel));
+      const item: DiscoveredItem = {
         type: def.type,
         sourceRelPath: toPosix(join(sourceSubdir, rel)),
-        bundleRelPath: toPosix(join(def.bundleDir, rel)),
-      });
+        bundleRelPath,
+      };
+      if (def.type === "skill" && options.pluginProvenance) {
+        item.provenance = provenanceForSkill(
+          bundleRelPath,
+          options.pluginProvenance,
+        );
+      }
+      items.push(item);
     }
   }
 
@@ -189,7 +232,11 @@ function buildManifest(
     ...(options.claudeCodeMinVersion && {
       claudeCodeMinVersion: options.claudeCodeMinVersion,
     }),
-    items: items.map((i) => ({ type: i.type, path: i.bundleRelPath })),
+    items: items.map((i) => ({
+      type: i.type,
+      path: i.bundleRelPath,
+      ...(i.provenance && { provenance: i.provenance }),
+    })),
     createdAt: new Date().toISOString(),
     ...(options.tags && options.tags.length > 0 && { tags: options.tags }),
   };
@@ -221,10 +268,17 @@ export async function exportProfile(
     `${JSON.stringify(manifest, null, 2)}\n`,
     "utf8",
   );
+  let pluginDerivedCount = 0;
+  for (const item of items) {
+    if (item.provenance?.source === "plugin") pluginDerivedCount++;
+  }
+
   return {
     manifest,
     outputDir: options.outputDir,
     itemCount: items.length,
+    userAuthoredCount: items.length - pluginDerivedCount,
+    pluginDerivedCount,
   };
 }
 

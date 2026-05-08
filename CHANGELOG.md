@@ -6,6 +6,27 @@ All notable changes will be documented here. The format is based on [Keep a Chan
 
 _No changes yet._
 
+## [0.1.3] — Provenance annotation for plugin-derived items
+
+### Added
+- **Each manifest item now carries a `provenance` field** when the export discovers it. `{ source: "user" }` for items you authored, `{ source: "plugin", marketplace: "<m>", plugin: "<p>" }` for items installed by another Claude Code plugin. Backward-compatible — `provenance` is optional, old manifests still validate.
+- **`detectPluginProvenance(claudeRoot)`** scans `~/.claude/plugins/marketplaces/*/{plugins,external_plugins}/*/skills/*` and returns a map of skill name → source plugin. Called automatically by the CLI under `--scope user`.
+- **New `ExportResult` fields** `userAuthoredCount` and `pluginDerivedCount` so callers can summarize what's in a bundle without re-walking it.
+
+### Changed
+- **`--scope user` CLI message reframed.** Replaces the v0.1.1 "review before publishing" warning with a useful breakdown:
+  ```
+  fyi: 0 user-authored + 134 plugin-derived item(s).
+  Sharing this loadout will give recipients your full lineup, including these plugins:
+    3d-web-experience, brainstorming, frontend-design, …
+  Recipients see the source of each item via 'claude-loadout show <alias>'.
+  ```
+- **No filtering by default.** A bundle that's mostly plugin-derived is a feature, not a problem — the whole point is "use my setup, including the plugins I rely on." The annotation just makes it explicit instead of hidden.
+
+### Notes
+- Provenance detection is best-effort: it matches by skill directory name. Two plugins shipping the same skill name will both map to the first one indexed. Good enough for the v0.1.3 "fyi" annotation; deterministic ordering can come later.
+- `claude-loadout show <alias>` automatically displays the new field because it pretty-prints the full manifest.
+
 ## [0.1.2] — Self-contained runtime bundle
 
 ### Fixed

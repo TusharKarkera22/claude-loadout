@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import { exportProfile } from "../../modules/export/index.js";
+import { detectPluginProvenance } from "../../modules/export/provenance.js";
 import { sanitizeBundle } from "../../modules/sanitize/index.js";
 import type { Config } from "../../config/loader.js";
 import type { ParsedFlags } from "../parse-args.js";
@@ -59,10 +60,18 @@ export async function runExport(
       : ".";
   const sourceDir = flags.source ?? defaultSource;
 
+  // Under user scope, index plugin-installed skills so each manifest item
+  // gets a provenance tag. Recipients can see what came from which plugin.
+  const pluginProvenance =
+    flags.scope === "user"
+      ? await detectPluginProvenance(sourceDir)
+      : undefined;
+
   const result = await exportProfile({
     sourceDir,
     outputDir: flags.out ?? config.export.outputDir,
     scope: flags.scope,
+    ...(pluginProvenance && { pluginProvenance }),
     include,
     author: {
       handle,
@@ -76,10 +85,18 @@ export async function runExport(
     description: flags.description,
   });
 
-  if (flags.scope === "user") {
+  if (flags.scope === "user" && result.pluginDerivedCount > 0) {
+    const plugins = new Set<string>();
+    for (const item of result.manifest.items) {
+      if (item.provenance?.source === "plugin" && item.provenance.plugin) {
+        plugins.add(item.provenance.plugin);
+      }
+    }
     process.stderr.write(
-      "note: --scope user includes everything under ~/.claude/skills|commands|agents.\n" +
-        "Some of those items may have been installed by other plugins. Review the bundle before publishing.\n",
+      `\nfyi: ${result.userAuthoredCount} user-authored + ${result.pluginDerivedCount} plugin-derived item(s).\n` +
+        `Sharing this loadout will give recipients your full lineup, including these plugins:\n` +
+        `  ${[...plugins].sort().join(", ")}\n` +
+        `Recipients see the source of each item via 'claude-loadout show <alias>'.\n`,
     );
   }
 

@@ -3770,7 +3770,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat);
           return;
         }
-        settings.fs.stat(path, (statError, stat4) => {
+        settings.fs.stat(path, (statError, stat5) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -3780,9 +3780,9 @@ var require_async = __commonJS({
             return;
           }
           if (settings.markSymbolicLink) {
-            stat4.isSymbolicLink = () => true;
+            stat5.isSymbolicLink = () => true;
           }
-          callSuccessCallback(callback, stat4);
+          callSuccessCallback(callback, stat5);
         });
       });
     }
@@ -3808,11 +3808,11 @@ var require_sync = __commonJS({
         return lstat;
       }
       try {
-        const stat4 = settings.fs.statSync(path);
+        const stat5 = settings.fs.statSync(path);
         if (settings.markSymbolicLink) {
-          stat4.isSymbolicLink = () => true;
+          stat5.isSymbolicLink = () => true;
         }
-        return stat4;
+        return stat5;
       } catch (error) {
         if (!settings.throwErrorOnBrokenSymbolicLink) {
           return lstat;
@@ -3879,14 +3879,14 @@ var require_out = __commonJS({
     var sync = require_sync();
     var settings_1 = require_settings();
     exports2.Settings = settings_1.default;
-    function stat4(path, optionsOrSettingsOrCallback, callback) {
+    function stat5(path, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
         async.read(path, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
       async.read(path, getSettings(optionsOrSettingsOrCallback), callback);
     }
-    exports2.stat = stat4;
+    exports2.stat = stat5;
     function statSync(path, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
       return sync.read(path, settings);
@@ -4049,7 +4049,7 @@ var require_async2 = __commonJS({
         readdirWithFileTypes(directory, settings, callback);
         return;
       }
-      readdir4(directory, settings, callback);
+      readdir5(directory, settings, callback);
     }
     exports2.read = read;
     function readdirWithFileTypes(directory, settings, callback) {
@@ -4098,7 +4098,7 @@ var require_async2 = __commonJS({
         });
       };
     }
-    function readdir4(directory, settings, callback) {
+    function readdir5(directory, settings, callback) {
       settings.fs.readdir(directory, (readdirError, names) => {
         if (readdirError !== null) {
           callFailureCallback(callback, readdirError);
@@ -4133,7 +4133,7 @@ var require_async2 = __commonJS({
         });
       });
     }
-    exports2.readdir = readdir4;
+    exports2.readdir = readdir5;
     function callFailureCallback(callback, error) {
       callback(error);
     }
@@ -4157,7 +4157,7 @@ var require_sync2 = __commonJS({
       if (!settings.stats && constants_1.IS_SUPPORT_READDIR_WITH_FILE_TYPES) {
         return readdirWithFileTypes(directory, settings);
       }
-      return readdir4(directory, settings);
+      return readdir5(directory, settings);
     }
     exports2.read = read;
     function readdirWithFileTypes(directory, settings) {
@@ -4182,7 +4182,7 @@ var require_sync2 = __commonJS({
       });
     }
     exports2.readdirWithFileTypes = readdirWithFileTypes;
-    function readdir4(directory, settings) {
+    function readdir5(directory, settings) {
       const names = settings.fs.readdirSync(directory);
       return names.map((name) => {
         const entryPath = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
@@ -4198,7 +4198,7 @@ var require_sync2 = __commonJS({
         return entry;
       });
     }
-    exports2.readdir = readdir4;
+    exports2.readdir = readdir5;
   }
 });
 
@@ -6437,12 +6437,12 @@ var require_src2 = __commonJS({
     function check(path, isFile, isDirectory) {
       log(`checking %s`, path);
       try {
-        const stat4 = fs_1.statSync(path);
-        if (stat4.isFile() && isFile) {
+        const stat5 = fs_1.statSync(path);
+        if (stat5.isFile() && isFile) {
           log(`[OK] path represents a file`);
           return true;
         }
-        if (stat4.isDirectory() && isDirectory) {
+        if (stat5.isDirectory() && isDirectory) {
           log(`[OK] path represents a directory`);
           return true;
         }
@@ -10699,7 +10699,7 @@ function parseFlags(argv) {
 
 // src/cli/handlers/export.ts
 var import_node_os = require("node:os");
-var import_node_path4 = require("node:path");
+var import_node_path5 = require("node:path");
 
 // src/modules/export/index.ts
 var import_promises2 = require("node:fs/promises");
@@ -10708,10 +10708,16 @@ var import_fast_glob = __toESM(require_out4(), 1);
 
 // src/manifest/schema.ts
 var SemverSchema = external_exports.string().regex(/^\d+\.\d+\.\d+(-[A-Za-z0-9.-]+)?$/, "must be semver");
+var ProvenanceSchema = external_exports.object({
+  source: external_exports.enum(["user", "plugin"]),
+  marketplace: external_exports.string().optional(),
+  plugin: external_exports.string().optional()
+});
 var ProfileItemSchema = external_exports.object({
   type: external_exports.enum(["skill", "command", "agent", "claude-md", "hook"]),
   path: external_exports.string(),
-  description: external_exports.string().optional()
+  description: external_exports.string().optional(),
+  provenance: ProvenanceSchema.optional()
 });
 var ProfileManifestSchema = external_exports.object({
   schemaVersion: external_exports.literal(1),
@@ -10733,6 +10739,22 @@ var ProfileManifestSchema = external_exports.object({
 });
 
 // src/modules/export/index.ts
+function provenanceForSkill(bundleRelPath, map) {
+  if (!map) return { source: "user" };
+  const segments = bundleRelPath.split("/");
+  const skillName = segments[1];
+  if (skillName && map.has(skillName)) {
+    const info = map.get(skillName);
+    if (info) {
+      return {
+        source: "plugin",
+        marketplace: info.marketplace,
+        plugin: info.plugin
+      };
+    }
+  }
+  return { source: "user" };
+}
 var ITEM_TYPE_DIRS = [
   {
     type: "skill",
@@ -10811,11 +10833,19 @@ async function discoverItems(options) {
     });
     matches.sort();
     for (const rel of matches) {
-      items.push({
+      const bundleRelPath = toPosix((0, import_node_path2.join)(def.bundleDir, rel));
+      const item = {
         type: def.type,
         sourceRelPath: toPosix((0, import_node_path2.join)(sourceSubdir, rel)),
-        bundleRelPath: toPosix((0, import_node_path2.join)(def.bundleDir, rel))
-      });
+        bundleRelPath
+      };
+      if (def.type === "skill" && options.pluginProvenance) {
+        item.provenance = provenanceForSkill(
+          bundleRelPath,
+          options.pluginProvenance
+        );
+      }
+      items.push(item);
     }
   }
   return items;
@@ -10845,7 +10875,11 @@ function buildManifest(items, options) {
     ...options.claudeCodeMinVersion && {
       claudeCodeMinVersion: options.claudeCodeMinVersion
     },
-    items: items.map((i2) => ({ type: i2.type, path: i2.bundleRelPath })),
+    items: items.map((i2) => ({
+      type: i2.type,
+      path: i2.bundleRelPath,
+      ...i2.provenance && { provenance: i2.provenance }
+    })),
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     ...options.tags && options.tags.length > 0 && { tags: options.tags }
   };
@@ -10866,16 +10900,86 @@ async function exportProfile(options) {
 `,
     "utf8"
   );
+  let pluginDerivedCount = 0;
+  for (const item of items) {
+    if (item.provenance?.source === "plugin") pluginDerivedCount++;
+  }
   return {
     manifest,
     outputDir: options.outputDir,
-    itemCount: items.length
+    itemCount: items.length,
+    userAuthoredCount: items.length - pluginDerivedCount,
+    pluginDerivedCount
   };
 }
 
-// src/modules/sanitize/index.ts
+// src/modules/export/provenance.ts
 var import_promises3 = require("node:fs/promises");
 var import_node_path3 = require("node:path");
+async function isDir(path) {
+  try {
+    return (await (0, import_promises3.stat)(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+async function listDirs(parent) {
+  try {
+    const entries = await (0, import_promises3.readdir)(parent, { withFileTypes: true });
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+}
+async function recordSkills(skillsDir, marketplace, plugin, map) {
+  if (!await isDir(skillsDir)) return;
+  for (const skill of await listDirs(skillsDir)) {
+    if (!map.has(skill)) map.set(skill, { marketplace, plugin });
+  }
+}
+async function detectPluginProvenance(claudeRoot) {
+  const map = /* @__PURE__ */ new Map();
+  const marketplacesDir = (0, import_node_path3.join)(claudeRoot, "plugins", "marketplaces");
+  if (await isDir(marketplacesDir)) {
+    for (const marketplace of await listDirs(marketplacesDir)) {
+      for (const bucket of ["plugins", "external_plugins"]) {
+        const bucketDir = (0, import_node_path3.join)(marketplacesDir, marketplace, bucket);
+        if (!await isDir(bucketDir)) continue;
+        for (const plugin of await listDirs(bucketDir)) {
+          await recordSkills(
+            (0, import_node_path3.join)(bucketDir, plugin, "skills"),
+            marketplace,
+            plugin,
+            map
+          );
+        }
+      }
+    }
+  }
+  const cacheDir = (0, import_node_path3.join)(claudeRoot, "plugins", "cache");
+  if (await isDir(cacheDir)) {
+    for (const marketplace of await listDirs(cacheDir)) {
+      const marketplaceDir = (0, import_node_path3.join)(cacheDir, marketplace);
+      for (const plugin of await listDirs(marketplaceDir)) {
+        const pluginDir = (0, import_node_path3.join)(marketplaceDir, plugin);
+        for (const version of await listDirs(pluginDir)) {
+          await recordSkills(
+            (0, import_node_path3.join)(pluginDir, version, "skills"),
+            marketplace,
+            plugin,
+            map
+          );
+        }
+      }
+    }
+  }
+  return map;
+}
+
+// src/modules/sanitize/index.ts
+var import_promises4 = require("node:fs/promises");
+var import_node_path4 = require("node:path");
 var import_fast_glob2 = __toESM(require_out4(), 1);
 var HIGH_CONFIDENCE_PATTERNS = [
   {
@@ -10948,7 +11052,7 @@ function looksLikeText(path, sample) {
   return true;
 }
 function toPosix2(p2) {
-  return p2.split(import_node_path3.sep).join("/");
+  return p2.split(import_node_path4.sep).join("/");
 }
 function compileDeny(patterns) {
   return patterns.map((src, i2) => ({
@@ -11022,8 +11126,8 @@ async function sanitizeBundle(bundleDir, options) {
   const findings = [];
   let scannedFiles = 0;
   for (const rel of files) {
-    const abs = (0, import_node_path3.join)(bundleDir, rel);
-    const buf = await (0, import_promises3.readFile)(abs);
+    const abs = (0, import_node_path4.join)(bundleDir, rel);
+    const buf = await (0, import_promises4.readFile)(abs);
     if (!looksLikeText(rel, buf)) continue;
     scannedFiles++;
     const content = buf.toString("utf8");
@@ -11076,12 +11180,14 @@ async function runExport(parsed, config) {
     agents: bool(flags.agents, config.export.include.agents),
     hooks: bool(flags["include-hooks"], config.export.include.hooks)
   };
-  const defaultSource = flags.scope === "user" ? (0, import_node_path4.join)((0, import_node_os.homedir)(), ".claude") : ".";
+  const defaultSource = flags.scope === "user" ? (0, import_node_path5.join)((0, import_node_os.homedir)(), ".claude") : ".";
   const sourceDir = flags.source ?? defaultSource;
+  const pluginProvenance = flags.scope === "user" ? await detectPluginProvenance(sourceDir) : void 0;
   const result = await exportProfile({
     sourceDir,
     outputDir: flags.out ?? config.export.outputDir,
     scope: flags.scope,
+    ...pluginProvenance && { pluginProvenance },
     include,
     author: {
       handle,
@@ -11093,9 +11199,20 @@ async function runExport(parsed, config) {
     version: flags.version,
     description: flags.description
   });
-  if (flags.scope === "user") {
+  if (flags.scope === "user" && result.pluginDerivedCount > 0) {
+    const plugins = /* @__PURE__ */ new Set();
+    for (const item of result.manifest.items) {
+      if (item.provenance?.source === "plugin" && item.provenance.plugin) {
+        plugins.add(item.provenance.plugin);
+      }
+    }
     process.stderr.write(
-      "note: --scope user includes everything under ~/.claude/skills|commands|agents.\nSome of those items may have been installed by other plugins. Review the bundle before publishing.\n"
+      `
+fyi: ${result.userAuthoredCount} user-authored + ${result.pluginDerivedCount} plugin-derived item(s).
+Sharing this loadout will give recipients your full lineup, including these plugins:
+  ${[...plugins].sort().join(", ")}
+Recipients see the source of each item via 'claude-loadout show <alias>'.
+`
     );
   }
   if (!bool(flags["skip-sanitize"], false)) {
@@ -11171,9 +11288,9 @@ async function runSanitize(parsed, config) {
 }
 
 // src/adapters/git-storage.ts
-var import_promises4 = require("node:fs/promises");
+var import_promises5 = require("node:fs/promises");
 var import_node_os2 = require("node:os");
-var import_node_path6 = require("node:path");
+var import_node_path7 = require("node:path");
 
 // node_modules/simple-git/dist/esm/index.js
 var import_file_exists = __toESM(require_dist(), 1);
@@ -11195,7 +11312,7 @@ function o(n) {
 var import_debug = __toESM(require_src(), 1);
 var import_child_process = require("child_process");
 var import_promise_deferred = __toESM(require_dist2(), 1);
-var import_node_path5 = require("node:path");
+var import_node_path6 = require("node:path");
 
 // node_modules/@simple-git/argv-parser/dist/index.mjs
 function* U(e, t2) {
@@ -14986,7 +15103,7 @@ var init_branch = __esm({
 });
 function toPath(input) {
   const path = input.trim().replace(/^["']|["']$/g, "");
-  return path && (0, import_node_path5.normalize)(path);
+  return path && (0, import_node_path6.normalize)(path);
 }
 var parseCheckIgnore;
 var init_CheckIgnore = __esm({
@@ -16146,7 +16263,7 @@ var GitStorageAdapter = class {
   id = "git";
   async fetch(source, options = {}) {
     const url = resolveSource(source);
-    const dir = await (0, import_promises4.mkdtemp)((0, import_node_path6.join)((0, import_node_os2.tmpdir)(), "claude-loadout-"));
+    const dir = await (0, import_promises5.mkdtemp)((0, import_node_path7.join)((0, import_node_os2.tmpdir)(), "claude-loadout-"));
     const git = simpleGit();
     const cloneArgs = options.shallow ? ["--depth", "1"] : [];
     if (options.ref) cloneArgs.push("--branch", options.ref);
@@ -16158,18 +16275,18 @@ var GitStorageAdapter = class {
     throw new Error("GitStorageAdapter.publish: not implemented in v0.1 scaffold");
   }
   async cleanup(localPath) {
-    await (0, import_promises4.rm)(localPath, { recursive: true, force: true });
+    await (0, import_promises5.rm)(localPath, { recursive: true, force: true });
   }
 };
 
 // src/modules/install/index.ts
-var import_promises6 = require("node:fs/promises");
-var import_node_path7 = require("node:path");
+var import_promises7 = require("node:fs/promises");
+var import_node_path8 = require("node:path");
 
 // src/manifest/validator.ts
-var import_promises5 = require("node:fs/promises");
+var import_promises6 = require("node:fs/promises");
 async function loadManifest(path) {
-  const raw = await (0, import_promises5.readFile)(path, "utf8");
+  const raw = await (0, import_promises6.readFile)(path, "utf8");
   let parsed;
   try {
     parsed = JSON.parse(raw);
@@ -16208,22 +16325,22 @@ function defaultAlias(manifest) {
 }
 async function pathExists(path) {
   try {
-    await (0, import_promises6.stat)(path);
+    await (0, import_promises7.stat)(path);
     return true;
   } catch {
     return false;
   }
 }
 async function copyTree(src, dst) {
-  const s = await (0, import_promises6.stat)(src);
+  const s = await (0, import_promises7.stat)(src);
   if (s.isDirectory()) {
-    await (0, import_promises6.mkdir)(dst, { recursive: true });
-    for (const entry of await (0, import_promises6.readdir)(src)) {
-      await copyTree((0, import_node_path7.join)(src, entry), (0, import_node_path7.join)(dst, entry));
+    await (0, import_promises7.mkdir)(dst, { recursive: true });
+    for (const entry of await (0, import_promises7.readdir)(src)) {
+      await copyTree((0, import_node_path8.join)(src, entry), (0, import_node_path8.join)(dst, entry));
     }
   } else if (s.isFile()) {
-    await (0, import_promises6.mkdir)((0, import_node_path7.dirname)(dst), { recursive: true });
-    await (0, import_promises6.copyFile)(src, dst);
+    await (0, import_promises7.mkdir)((0, import_node_path8.dirname)(dst), { recursive: true });
+    await (0, import_promises7.copyFile)(src, dst);
   }
 }
 function partitionItems(items, allowHookImport) {
@@ -16246,7 +16363,7 @@ async function installProfile(options) {
       shallow: true,
       ...options.ref && { ref: options.ref }
     });
-    const manifestPath = (0, import_node_path7.join)(fetched.localPath, "profile.json");
+    const manifestPath = (0, import_node_path8.join)(fetched.localPath, "profile.json");
     const validation = await loadManifest(manifestPath);
     if (!validation.ok) {
       throw new Error(
@@ -16260,7 +16377,7 @@ async function installProfile(options) {
       );
     }
     const alias = options.alias ?? defaultAlias(manifest);
-    const installRoot = (0, import_node_path7.join)(options.profilesDir, alias);
+    const installRoot = (0, import_node_path8.join)(options.profilesDir, alias);
     if (await pathExists(installRoot)) {
       throw new Error(
         `Profile alias "${alias}" already installed at ${installRoot}. Use --as <alias> to install side-by-side, or remove the existing one first.`
@@ -16270,24 +16387,24 @@ async function installProfile(options) {
       manifest.items,
       options.allowHookImport
     );
-    await (0, import_promises6.mkdir)(installRoot, { recursive: true });
+    await (0, import_promises7.mkdir)(installRoot, { recursive: true });
     for (const item of imported) {
-      const src = (0, import_node_path7.join)(fetched.localPath, item.path);
-      const dst = (0, import_node_path7.join)(installRoot, item.path);
+      const src = (0, import_node_path8.join)(fetched.localPath, item.path);
+      const dst = (0, import_node_path8.join)(installRoot, item.path);
       if (!await pathExists(src)) {
         throw new Error(
           `Manifest references missing file: ${item.path}. Refusing partial install.`
         );
       }
-      const s = await (0, import_promises6.stat)(src);
+      const s = await (0, import_promises7.stat)(src);
       if (s.isDirectory()) {
         await copyTree(src, dst);
       } else {
-        await (0, import_promises6.mkdir)((0, import_node_path7.dirname)(dst), { recursive: true });
-        await (0, import_promises6.copyFile)(src, dst);
+        await (0, import_promises7.mkdir)((0, import_node_path8.dirname)(dst), { recursive: true });
+        await (0, import_promises7.copyFile)(src, dst);
       }
     }
-    await (0, import_promises6.copyFile)(manifestPath, (0, import_node_path7.join)(installRoot, "profile.json"));
+    await (0, import_promises7.copyFile)(manifestPath, (0, import_node_path8.join)(installRoot, "profile.json"));
     const installedAt = (/* @__PURE__ */ new Date()).toISOString();
     const meta = {
       alias,
@@ -16296,8 +16413,8 @@ async function installProfile(options) {
       installedAt,
       manifestVersion: manifest.version
     };
-    await (0, import_promises6.writeFile)(
-      (0, import_node_path7.join)(installRoot, ".install.json"),
+    await (0, import_promises7.writeFile)(
+      (0, import_node_path8.join)(installRoot, ".install.json"),
       `${JSON.stringify(meta, null, 2)}
 `,
       "utf8"
@@ -16318,7 +16435,7 @@ async function installProfile(options) {
         await adapter.cleanup(fetched.localPath).catch(() => {
         });
       } else {
-        await (0, import_promises6.rm)(fetched.localPath, { recursive: true, force: true }).catch(() => {
+        await (0, import_promises7.rm)(fetched.localPath, { recursive: true, force: true }).catch(() => {
         });
       }
     }
@@ -16369,8 +16486,8 @@ Path: ${result.installRoot}
 }
 
 // src/modules/manage/index.ts
-var import_promises7 = require("node:fs/promises");
-var import_node_path8 = require("node:path");
+var import_promises8 = require("node:fs/promises");
+var import_node_path9 = require("node:path");
 var InstallMetadataSchema = external_exports.object({
   alias: external_exports.string(),
   source: external_exports.string(),
@@ -16382,15 +16499,15 @@ function assertSafeAlias(profilesDir, alias) {
   if (!alias || alias.includes("\0")) {
     throw new Error(`Invalid alias: ${JSON.stringify(alias)}`);
   }
-  if ((0, import_node_path8.isAbsolute)(alias) || alias.includes(import_node_path8.sep) || alias.includes("/")) {
+  if ((0, import_node_path9.isAbsolute)(alias) || alias.includes(import_node_path9.sep) || alias.includes("/")) {
     throw new Error(
       `Invalid alias "${alias}": aliases must be a single path segment.`
     );
   }
-  const target = (0, import_node_path8.resolve)(profilesDir, alias);
-  const root = (0, import_node_path8.resolve)(profilesDir);
-  const rel = (0, import_node_path8.relative)(root, target);
-  if (rel.startsWith("..") || (0, import_node_path8.isAbsolute)(rel) || rel === "") {
+  const target = (0, import_node_path9.resolve)(profilesDir, alias);
+  const root = (0, import_node_path9.resolve)(profilesDir);
+  const rel = (0, import_node_path9.relative)(root, target);
+  if (rel.startsWith("..") || (0, import_node_path9.isAbsolute)(rel) || rel === "") {
     throw new Error(
       `Invalid alias "${alias}": resolves outside profilesDir.`
     );
@@ -16398,12 +16515,12 @@ function assertSafeAlias(profilesDir, alias) {
   return target;
 }
 async function readInstalledProfile(profilesDir, alias) {
-  const localPath = (0, import_node_path8.join)(profilesDir, alias);
-  const manifestPath = (0, import_node_path8.join)(localPath, "profile.json");
-  const metaPath = (0, import_node_path8.join)(localPath, ".install.json");
+  const localPath = (0, import_node_path9.join)(profilesDir, alias);
+  const manifestPath = (0, import_node_path9.join)(localPath, "profile.json");
+  const metaPath = (0, import_node_path9.join)(localPath, ".install.json");
   let s;
   try {
-    s = await (0, import_promises7.stat)(manifestPath);
+    s = await (0, import_promises8.stat)(manifestPath);
   } catch {
     return null;
   }
@@ -16414,7 +16531,7 @@ async function readInstalledProfile(profilesDir, alias) {
   let installedRef = "";
   let source = "";
   try {
-    const raw = await (0, import_promises7.readFile)(metaPath, "utf8");
+    const raw = await (0, import_promises8.readFile)(metaPath, "utf8");
     const parsed = InstallMetadataSchema.safeParse(JSON.parse(raw));
     if (parsed.success) {
       installedAt = parsed.data.installedAt;
@@ -16435,7 +16552,7 @@ async function readInstalledProfile(profilesDir, alias) {
 async function listProfiles(profilesDir) {
   let entries;
   try {
-    entries = await (0, import_promises7.readdir)(profilesDir);
+    entries = await (0, import_promises8.readdir)(profilesDir);
   } catch (err) {
     if (err.code === "ENOENT") return [];
     throw err;
@@ -16462,11 +16579,11 @@ async function removeProfile(profilesDir, alias) {
   if (!profile) {
     throw new Error(`Profile "${alias}" is not installed in ${profilesDir}.`);
   }
-  const safeRoot = (0, import_node_path8.resolve)(profilesDir) + import_node_path8.sep;
-  if (!(0, import_node_path8.normalize)(target + import_node_path8.sep).startsWith(safeRoot)) {
+  const safeRoot = (0, import_node_path9.resolve)(profilesDir) + import_node_path9.sep;
+  if (!(0, import_node_path9.normalize)(target + import_node_path9.sep).startsWith(safeRoot)) {
     throw new Error(`Refusing to remove ${target}: outside profilesDir.`);
   }
-  await (0, import_promises7.rm)(target, { recursive: true, force: true });
+  await (0, import_promises8.rm)(target, { recursive: true, force: true });
 }
 async function updateProfile(profilesDir, alias, options) {
   assertSafeAlias(profilesDir, alias);
@@ -16480,8 +16597,8 @@ async function updateProfile(profilesDir, alias, options) {
     );
   }
   const stagingAlias = `${alias}.update-staging`;
-  const stagingPath = (0, import_node_path8.join)(profilesDir, stagingAlias);
-  await (0, import_promises7.rm)(stagingPath, { recursive: true, force: true });
+  const stagingPath = (0, import_node_path9.join)(profilesDir, stagingAlias);
+  await (0, import_promises8.rm)(stagingPath, { recursive: true, force: true });
   await installProfile({
     source: existing.source,
     storage: options.storage,
@@ -16495,7 +16612,7 @@ async function updateProfile(profilesDir, alias, options) {
       claudeCodeVersion: options.claudeCodeVersion
     }
   });
-  await (0, import_promises7.rm)(existing.localPath, { recursive: true, force: true });
+  await (0, import_promises8.rm)(existing.localPath, { recursive: true, force: true });
   const { rename } = await import("node:fs/promises");
   await rename(stagingPath, existing.localPath);
   const refreshed = await readInstalledProfile(profilesDir, alias);
