@@ -12,12 +12,19 @@ Scaffold and core profile pipeline. **Status: implementation complete; 55 tests 
 - [x] Config loader (`src/config/loader.ts`) with sensible defaults when `claude-loadout.config.json` is absent
 - [x] Tests: vitest suite covering manifest schema, config, all four modules, CLI dispatcher
 
-## v0.2
+## v0.2 (current)
 
-These slot into documented extension points already present in v0.1:
+**Team handoff** ships in v0.2.0. **Status: 103 tests passing.**
 
-- **Team handoff archive** — implement `src/hooks/session-end.ts`. Capture transcript summary + diffs + todo state on Stop hook; resume via `/profile handoff <id>`.
-- **Slack notifications** — Stop hook posts session summary to a configured webhook.
+- [x] **`handoff create`** — AI-drafted summary + binary-safe `git diff` of every uncommitted change (tracked, staged, untracked) bundled with a zod-validated `handoff.json` manifest. Sanitize runs automatically.
+- [x] **`handoff resume <source>`** — fetch via Git URL / `owner/repo` shorthand / local path; validate manifest; refuse dirty trees by default; auto-checkout author's branch by default; apply via `git apply --3way` with a visible fallback warning when `baseCommit` is missing locally.
+- [x] **`handoff push`** — implements `GitStorageAdapter.publish()` (was a stub in v0.1). init + commit + push to a remote.
+- [x] Two new slash commands: `/claude-loadout:handoff-create` and `/claude-loadout:handoff-resume <source>`.
+
+Deferred from earlier v0.2 plans, still on the menu for future versions:
+
+- **SessionEnd auto-archive** — `src/hooks/session-end.ts` is still a stub. v0.2 capture is intentionally manual (user controls when and what is shared); auto-archive will land when there is concrete demand for it.
+- **Slack/Discord notifications** — Stop hook posts session summary to a configured webhook.
 - **Hook import with consent** — extend Module C to import `type: "hook"` items behind a per-install confirmation prompt.
 - **Profile registry / discovery site** — small static site indexing the GitHub topic `claude-code-profile`.
 

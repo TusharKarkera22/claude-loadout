@@ -8,6 +8,7 @@ import { runList } from "./handlers/list.js";
 import { runShow } from "./handlers/show.js";
 import { runRemove } from "./handlers/remove.js";
 import { runUpdate } from "./handlers/update.js";
+import { runHandoff } from "./handlers/handoff.js";
 
 const SUBCOMMANDS = [
   "export",
@@ -17,6 +18,7 @@ const SUBCOMMANDS = [
   "show",
   "remove",
   "update",
+  "handoff",
 ] as const;
 type Subcommand = (typeof SUBCOMMANDS)[number];
 
@@ -34,6 +36,7 @@ Subcommands:
   show      Print a profile manifest
   update    Re-fetch and re-install an installed profile
   remove    Uninstall a profile
+  handoff   Capture or resume a team handoff (subcommands: create, resume, push)
 `;
 
 export async function runCli(argv: string[]): Promise<number> {
@@ -62,6 +65,8 @@ export async function runCli(argv: string[]): Promise<number> {
         return await runRemove(parsed, config);
       case "update":
         return await runUpdate(parsed, config);
+      case "handoff":
+        return await runHandoff(parsed, config);
     }
   } catch (err) {
     if (err instanceof ZodError) {

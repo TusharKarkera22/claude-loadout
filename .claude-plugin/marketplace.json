@@ -9,7 +9,7 @@
     {
       "name": "claude-loadout",
       "source": "./",
-      "version": "0.1.3",
+      "version": "0.2.0",
       "description": "Share your Claude Code setup like dotfiles. Bundle CLAUDE.md, skills, slash commands, and sub-agents into a portable loadout teammates can install in one command.",
       "homepage": "https://github.com/TusharKarkera22/claude-loadout"
     }

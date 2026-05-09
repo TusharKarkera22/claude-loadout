@@ -3770,7 +3770,7 @@ var require_async = __commonJS({
           callSuccessCallback(callback, lstat);
           return;
         }
-        settings.fs.stat(path, (statError, stat5) => {
+        settings.fs.stat(path, (statError, stat7) => {
           if (statError !== null) {
             if (settings.throwErrorOnBrokenSymbolicLink) {
               callFailureCallback(callback, statError);
@@ -3780,9 +3780,9 @@ var require_async = __commonJS({
             return;
           }
           if (settings.markSymbolicLink) {
-            stat5.isSymbolicLink = () => true;
+            stat7.isSymbolicLink = () => true;
           }
-          callSuccessCallback(callback, stat5);
+          callSuccessCallback(callback, stat7);
         });
       });
     }
@@ -3808,11 +3808,11 @@ var require_sync = __commonJS({
         return lstat;
       }
       try {
-        const stat5 = settings.fs.statSync(path);
+        const stat7 = settings.fs.statSync(path);
         if (settings.markSymbolicLink) {
-          stat5.isSymbolicLink = () => true;
+          stat7.isSymbolicLink = () => true;
         }
-        return stat5;
+        return stat7;
       } catch (error) {
         if (!settings.throwErrorOnBrokenSymbolicLink) {
           return lstat;
@@ -3879,14 +3879,14 @@ var require_out = __commonJS({
     var sync = require_sync();
     var settings_1 = require_settings();
     exports2.Settings = settings_1.default;
-    function stat5(path, optionsOrSettingsOrCallback, callback) {
+    function stat7(path, optionsOrSettingsOrCallback, callback) {
       if (typeof optionsOrSettingsOrCallback === "function") {
         async.read(path, getSettings(), optionsOrSettingsOrCallback);
         return;
       }
       async.read(path, getSettings(optionsOrSettingsOrCallback), callback);
     }
-    exports2.stat = stat5;
+    exports2.stat = stat7;
     function statSync(path, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
       return sync.read(path, settings);
@@ -4049,7 +4049,7 @@ var require_async2 = __commonJS({
         readdirWithFileTypes(directory, settings, callback);
         return;
       }
-      readdir5(directory, settings, callback);
+      readdir6(directory, settings, callback);
     }
     exports2.read = read;
     function readdirWithFileTypes(directory, settings, callback) {
@@ -4098,7 +4098,7 @@ var require_async2 = __commonJS({
         });
       };
     }
-    function readdir5(directory, settings, callback) {
+    function readdir6(directory, settings, callback) {
       settings.fs.readdir(directory, (readdirError, names) => {
         if (readdirError !== null) {
           callFailureCallback(callback, readdirError);
@@ -4133,7 +4133,7 @@ var require_async2 = __commonJS({
         });
       });
     }
-    exports2.readdir = readdir5;
+    exports2.readdir = readdir6;
     function callFailureCallback(callback, error) {
       callback(error);
     }
@@ -4157,7 +4157,7 @@ var require_sync2 = __commonJS({
       if (!settings.stats && constants_1.IS_SUPPORT_READDIR_WITH_FILE_TYPES) {
         return readdirWithFileTypes(directory, settings);
       }
-      return readdir5(directory, settings);
+      return readdir6(directory, settings);
     }
     exports2.read = read;
     function readdirWithFileTypes(directory, settings) {
@@ -4182,7 +4182,7 @@ var require_sync2 = __commonJS({
       });
     }
     exports2.readdirWithFileTypes = readdirWithFileTypes;
-    function readdir5(directory, settings) {
+    function readdir6(directory, settings) {
       const names = settings.fs.readdirSync(directory);
       return names.map((name) => {
         const entryPath = common.joinPathSegments(directory, name, settings.pathSegmentSeparator);
@@ -4198,7 +4198,7 @@ var require_sync2 = __commonJS({
         return entry;
       });
     }
-    exports2.readdir = readdir5;
+    exports2.readdir = readdir6;
   }
 });
 
@@ -6437,12 +6437,12 @@ var require_src2 = __commonJS({
     function check(path, isFile, isDirectory) {
       log(`checking %s`, path);
       try {
-        const stat5 = fs_1.statSync(path);
-        if (stat5.isFile() && isFile) {
+        const stat7 = fs_1.statSync(path);
+        if (stat7.isFile() && isFile) {
           log(`[OK] path represents a file`);
           return true;
         }
-        if (stat5.isDirectory() && isDirectory) {
+        if (stat7.isDirectory() && isDirectory) {
           log(`[OK] path represents a directory`);
           return true;
         }
@@ -16271,8 +16271,35 @@ var GitStorageAdapter = class {
     const head = await simpleGit(dir).revparse(["HEAD"]);
     return { localPath: dir, resolvedRef: head.trim() };
   }
-  async publish(_localPath, _target, _options) {
-    throw new Error("GitStorageAdapter.publish: not implemented in v0.1 scaffold");
+  async publish(localPath, target, options) {
+    const url = resolveSource(target);
+    const git = simpleGit(localPath);
+    const isRepo = await git.checkIsRepo().catch(() => false);
+    if (!isRepo) {
+      await git.init(["--initial-branch", "main"]);
+    }
+    const localCfg = await git.listConfig("local");
+    const cfg = localCfg.all;
+    if (!cfg["user.name"]) await git.addConfig("user.name", "claude-loadout");
+    if (!cfg["user.email"]) {
+      await git.addConfig("user.email", "claude-loadout@example.com");
+    }
+    await git.add(".");
+    const status = await git.status();
+    const hasChanges = status.staged.length > 0 || status.created.length > 0 || status.modified.length > 0 || status.deleted.length > 0 || status.renamed.length > 0;
+    if (hasChanges) {
+      await git.commit(options.message);
+    }
+    const remotes = await git.getRemotes(true);
+    const existing = remotes.find((r2) => r2.name === "origin");
+    if (!existing) {
+      await git.addRemote("origin", url);
+    } else if (existing.refs.push !== url && existing.refs.fetch !== url) {
+      await git.remote(["set-url", "origin", url]);
+    }
+    if (options.push !== false) {
+      await git.push("origin", "main", ["--force"]);
+    }
   }
   async cleanup(localPath) {
     await (0, import_promises5.rm)(localPath, { recursive: true, force: true });
@@ -16689,6 +16716,533 @@ async function runUpdate(parsed, config) {
   return 0;
 }
 
+// src/cli/handlers/handoff.ts
+var import_node_readline = require("node:readline");
+
+// src/modules/handoff/index.ts
+var import_promises11 = require("node:fs/promises");
+var import_node_path11 = require("node:path");
+
+// src/manifest/handoff-schema.ts
+var import_promises9 = require("node:fs/promises");
+var HandoffManifestSchema = external_exports.object({
+  schemaVersion: external_exports.literal(1),
+  id: external_exports.string().regex(/^[a-z0-9][a-z0-9-]{1,63}$/),
+  author: external_exports.object({
+    handle: external_exports.string().min(1).max(64),
+    displayName: external_exports.string().optional(),
+    url: external_exports.string().url().optional()
+  }),
+  createdAt: external_exports.string().datetime(),
+  branch: external_exports.string().min(1),
+  baseCommit: external_exports.string().regex(/^[0-9a-f]{7,40}$/),
+  repoUrl: external_exports.string().optional(),
+  summaryFile: external_exports.literal("handoff.md"),
+  diffFile: external_exports.literal("changes.patch").optional(),
+  todos: external_exports.array(
+    external_exports.object({
+      text: external_exports.string(),
+      done: external_exports.boolean().default(false)
+    })
+  ).optional(),
+  claudeCodeMinVersion: SemverSchema.optional(),
+  sanitized: external_exports.object({
+    findings: external_exports.number().int().nonnegative(),
+    lastScanAt: external_exports.string().datetime()
+  }).optional()
+});
+async function loadHandoffManifest(path) {
+  const raw = await (0, import_promises9.readFile)(path, "utf8");
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    return { ok: false, errors: [`invalid JSON: ${err.message}`] };
+  }
+  const result = HandoffManifestSchema.safeParse(parsed);
+  if (!result.success) {
+    return {
+      ok: false,
+      errors: result.error.issues.map(
+        (i2) => `${i2.path.join(".") || "<root>"}: ${i2.message}`
+      )
+    };
+  }
+  return { ok: true, manifest: result.data };
+}
+
+// src/modules/handoff/git-state.ts
+var import_node_child_process = require("node:child_process");
+var import_promises10 = require("node:fs/promises");
+var import_node_os3 = require("node:os");
+var import_node_path10 = require("node:path");
+function runGit(args, opts) {
+  return new Promise((resolve2, reject) => {
+    const child = (0, import_node_child_process.spawn)("git", args, {
+      cwd: opts.cwd,
+      env: opts.env ?? process.env,
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (d) => stdout += d.toString("utf8"));
+    child.stderr?.on("data", (d) => stderr += d.toString("utf8"));
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      resolve2({ stdout, stderr, code: code ?? 0 });
+    });
+  });
+}
+async function getGitState(repoDir) {
+  const git = simpleGit(repoDir);
+  const isRepo = await git.checkIsRepo().catch(() => false);
+  if (!isRepo) {
+    throw new Error(`not a git repository: ${repoDir}`);
+  }
+  const branch = (await git.revparse(["--abbrev-ref", "HEAD"])).trim();
+  const baseCommit = (await git.revparse(["HEAD"])).trim();
+  let repoUrl;
+  try {
+    const url = (await git.raw(["remote", "get-url", "origin"])).trim();
+    if (url) repoUrl = url;
+  } catch {
+  }
+  return { branch, baseCommit, ...repoUrl ? { repoUrl } : {} };
+}
+async function captureDiff(repoDir) {
+  const tmpDir = await (0, import_promises10.mkdtemp)((0, import_node_path10.join)((0, import_node_os3.tmpdir)(), "claude-loadout-idx-"));
+  const tmpIndex = (0, import_node_path10.join)(tmpDir, "index");
+  try {
+    const env = { ...process.env, GIT_INDEX_FILE: tmpIndex };
+    const readTree = await runGit(["read-tree", "HEAD"], { cwd: repoDir, env });
+    if (readTree.code !== 0) {
+      throw new Error(`git read-tree HEAD failed: ${readTree.stderr.trim()}`);
+    }
+    const add = await runGit(["add", "-A"], { cwd: repoDir, env });
+    if (add.code !== 0) {
+      throw new Error(`git add -A failed: ${add.stderr.trim()}`);
+    }
+    const diff = await runGit(["diff", "--cached", "HEAD", "--binary"], {
+      cwd: repoDir,
+      env
+    });
+    if (diff.code !== 0) {
+      throw new Error(`git diff failed: ${diff.stderr.trim()}`);
+    }
+    return diff.stdout;
+  } finally {
+    await (0, import_promises10.rm)(tmpDir, { recursive: true, force: true }).catch(() => {
+    });
+  }
+}
+
+// src/modules/handoff/index.ts
+async function isDirEmptyOrAbsent2(path) {
+  try {
+    const entries = await (0, import_promises11.readdir)(path);
+    return entries.length === 0;
+  } catch (err) {
+    if (err.code === "ENOENT") return true;
+    throw err;
+  }
+}
+async function fileNonEmpty(path) {
+  try {
+    const s = await (0, import_promises11.stat)(path);
+    return s.isFile() && s.size > 0;
+  } catch {
+    return false;
+  }
+}
+function defaultId(handle, when) {
+  const yyyy = when.getUTCFullYear();
+  const mm = String(when.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(when.getUTCDate()).padStart(2, "0");
+  const hh = String(when.getUTCHours()).padStart(2, "0");
+  const mi = String(when.getUTCMinutes()).padStart(2, "0");
+  return `${handle.toLowerCase()}-${yyyy}${mm}${dd}-${hh}${mi}`;
+}
+async function createHandoff(opts) {
+  if (!await isDirEmptyOrAbsent2(opts.outDir)) {
+    throw new Error(
+      `Output directory ${opts.outDir} exists and is not empty. Refusing to overwrite. Pick a fresh path or remove the existing one.`
+    );
+  }
+  const summaryStat = await (0, import_promises11.stat)(opts.summaryPath).catch(() => null);
+  if (!summaryStat || !summaryStat.isFile()) {
+    throw new Error(`summary file not found: ${opts.summaryPath}`);
+  }
+  if (!await fileNonEmpty(opts.summaryPath)) {
+    throw new Error(`summary file is empty: ${opts.summaryPath}`);
+  }
+  const gitState = await getGitState(opts.source);
+  const diff = await captureDiff(opts.source);
+  const hasDiff = diff.trim().length > 0;
+  await (0, import_promises11.mkdir)(opts.outDir, { recursive: true });
+  await (0, import_promises11.copyFile)(opts.summaryPath, (0, import_node_path11.join)(opts.outDir, "handoff.md"));
+  if (hasDiff) {
+    await (0, import_promises11.writeFile)((0, import_node_path11.join)(opts.outDir, "changes.patch"), diff, "utf8");
+  }
+  const createdAt = /* @__PURE__ */ new Date();
+  const id = opts.id ?? defaultId(opts.authorHandle, createdAt);
+  const baseManifest = {
+    schemaVersion: 1,
+    id,
+    author: {
+      handle: opts.authorHandle,
+      ...opts.authorDisplayName && { displayName: opts.authorDisplayName },
+      ...opts.authorUrl && { url: opts.authorUrl }
+    },
+    createdAt: createdAt.toISOString(),
+    branch: gitState.branch,
+    baseCommit: gitState.baseCommit,
+    ...gitState.repoUrl && { repoUrl: gitState.repoUrl },
+    summaryFile: "handoff.md",
+    ...hasDiff && { diffFile: "changes.patch" },
+    ...opts.todos && opts.todos.length > 0 && {
+      todos: opts.todos.map((t2) => ({ text: t2.text, done: t2.done ?? false }))
+    },
+    ...opts.claudeCodeMinVersion && {
+      claudeCodeMinVersion: opts.claudeCodeMinVersion
+    }
+  };
+  const sanitizeOpts = {
+    allow: opts.sanitize?.allow ?? [],
+    deny: opts.sanitize?.deny ?? [],
+    redactAbsolutePaths: opts.sanitize?.redactAbsolutePaths ?? false,
+    redactEnvAssignments: opts.sanitize?.redactEnvAssignments ?? false
+  };
+  const sanitizeResult = await sanitizeBundle(opts.outDir, sanitizeOpts);
+  const highSeverity = sanitizeResult.findings.filter(
+    (f) => f.severity === "high"
+  );
+  if (highSeverity.length > 0 && !opts.allowFindings) {
+    throw new Error(
+      `sanitize blocked handoff: ${highSeverity.length} high-severity finding(s). First match: ${highSeverity[0].rule} at ${highSeverity[0].file}:${highSeverity[0].line}. Re-run with --allow-findings if you have already reviewed.`
+    );
+  }
+  const manifest = {
+    ...baseManifest,
+    sanitized: {
+      findings: sanitizeResult.findings.length,
+      lastScanAt: (/* @__PURE__ */ new Date()).toISOString()
+    }
+  };
+  const validated = HandoffManifestSchema.parse(manifest);
+  await (0, import_promises11.writeFile)(
+    (0, import_node_path11.join)(opts.outDir, "handoff.json"),
+    `${JSON.stringify(validated, null, 2)}
+`,
+    "utf8"
+  );
+  return {
+    bundleDir: opts.outDir,
+    manifest: validated,
+    findings: sanitizeResult.findings,
+    hasUncommittedChanges: hasDiff
+  };
+}
+
+// src/modules/handoff/resume.ts
+var import_node_child_process2 = require("node:child_process");
+var import_promises12 = require("node:fs/promises");
+var import_node_path12 = require("node:path");
+async function isLocalBundle(source) {
+  try {
+    const s = await (0, import_promises12.stat)(source);
+    if (!s.isDirectory()) return false;
+    const m = await (0, import_promises12.stat)((0, import_node_path12.join)(source, "handoff.json")).catch(() => null);
+    return !!m && m.isFile();
+  } catch {
+    return false;
+  }
+}
+async function isWorkingTreeClean(git) {
+  const status = await git.status();
+  return status.isClean();
+}
+async function hasCommit(repoDir, sha) {
+  return await new Promise((resolve2) => {
+    const child = (0, import_node_child_process2.spawn)("git", ["cat-file", "-e", sha], {
+      cwd: repoDir,
+      stdio: "ignore"
+    });
+    child.on("error", () => resolve2(false));
+    child.on("exit", (code) => resolve2(code === 0));
+  });
+}
+async function localBranchExists(git, name) {
+  try {
+    await git.raw(["rev-parse", "--verify", `refs/heads/${name}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function resumeHandoff(opts) {
+  const apply = opts.apply ?? true;
+  const checkout = opts.checkout ?? true;
+  const allowDirty = opts.allowDirty ?? false;
+  const warn = opts.onWarn ?? (() => {
+  });
+  let bundleDir;
+  let storageCleanup;
+  if (await isLocalBundle(opts.source)) {
+    bundleDir = opts.source;
+  } else {
+    const adapter = new GitStorageAdapter();
+    const fetched = await adapter.fetch(opts.source);
+    bundleDir = fetched.localPath;
+    storageCleanup = () => adapter.cleanup(fetched.localPath);
+  }
+  try {
+    const manifestPath = (0, import_node_path12.join)(bundleDir, "handoff.json");
+    const validated = await loadHandoffManifest(manifestPath);
+    if (!validated.ok) {
+      throw new Error(
+        `invalid handoff manifest: ${validated.errors.join("; ")}`
+      );
+    }
+    const manifest = validated.manifest;
+    const git = simpleGit(opts.repoDir);
+    const isRepo = await git.checkIsRepo().catch(() => false);
+    if (!isRepo) {
+      throw new Error(`not a git repository: ${opts.repoDir}`);
+    }
+    if (!allowDirty && !await isWorkingTreeClean(git)) {
+      throw new Error(
+        `Bob's working tree is dirty. Commit or stash, or pass --allow-dirty.`
+      );
+    }
+    const baseCommitAvailable = await hasCommit(opts.repoDir, manifest.baseCommit);
+    if (!baseCommitAvailable) {
+      warn(
+        `baseCommit ${manifest.baseCommit} is not present in this repo; falling back to plain git apply (no 3-way merge).`
+      );
+    }
+    let branchSwitched;
+    if (checkout) {
+      const targetBranch = manifest.branch;
+      const exists2 = await localBranchExists(git, targetBranch);
+      if (exists2) {
+        await git.checkout(targetBranch);
+      } else if (baseCommitAvailable) {
+        await git.checkoutBranch(targetBranch, manifest.baseCommit);
+      } else {
+        await git.checkoutLocalBranch(targetBranch);
+      }
+      branchSwitched = targetBranch;
+    }
+    let applied = false;
+    if (manifest.diffFile) {
+      const patchPath = (0, import_node_path12.join)(bundleDir, manifest.diffFile);
+      try {
+        const stat7 = (await git.raw(["apply", "--stat", patchPath])).trim();
+        if (stat7 && opts.onInfo) opts.onInfo(stat7);
+      } catch {
+      }
+      if (apply) {
+        const proceed = opts.confirmApply ? await opts.confirmApply() : true;
+        if (proceed) {
+          const args = baseCommitAvailable ? ["apply", "--3way", patchPath] : ["apply", patchPath];
+          await git.raw(args);
+          applied = true;
+        }
+      }
+    }
+    return {
+      manifest,
+      bundleDir,
+      applied,
+      ...branchSwitched && { branchSwitched },
+      baseCommitAvailable
+    };
+  } finally {
+    if (storageCleanup) {
+      await storageCleanup().catch(() => {
+      });
+    }
+  }
+}
+
+// src/cli/handlers/handoff.ts
+var HANDOFF_USAGE = `claude-loadout handoff <subcommand> [options]
+
+Subcommands:
+  create   Bundle current uncommitted changes + summary as a shareable handoff
+  resume   Apply a teammate's handoff to your current repo
+  push     Publish a handoff bundle to a git remote
+`;
+var CreateSchema = external_exports.object({
+  source: external_exports.string().default("."),
+  summary: external_exports.string().min(1, "summary path is required"),
+  out: external_exports.string().min(1, "output dir is required"),
+  author: external_exports.string().optional(),
+  "display-name": external_exports.string().optional(),
+  id: external_exports.string().optional(),
+  "allow-findings": external_exports.union([external_exports.boolean(), external_exports.string()]).optional()
+});
+var ResumeSchema = external_exports.object({
+  repo: external_exports.string().default("."),
+  apply: external_exports.union([external_exports.boolean(), external_exports.string()]).optional(),
+  checkout: external_exports.union([external_exports.boolean(), external_exports.string()]).optional(),
+  "allow-dirty": external_exports.union([external_exports.boolean(), external_exports.string()]).optional(),
+  yes: external_exports.union([external_exports.boolean(), external_exports.string()]).optional()
+});
+var PushSchema = external_exports.object({
+  remote: external_exports.string().min(1, "--remote <url> is required"),
+  message: external_exports.string().optional(),
+  push: external_exports.union([external_exports.boolean(), external_exports.string()]).optional()
+});
+function bool4(v, fallback) {
+  if (typeof v === "boolean") return v;
+  if (v === void 0) return fallback;
+  return v !== "false" && v !== "0";
+}
+async function runCreate(parsed, config) {
+  const flags = CreateSchema.parse(parsed.flags);
+  const handle = flags.author ?? config.author?.handle;
+  if (!handle) {
+    process.stderr.write(
+      "error: --author <handle> is required (or set author.handle in claude-loadout.config.json)\n"
+    );
+    return 1;
+  }
+  const result = await createHandoff({
+    source: flags.source,
+    summaryPath: flags.summary,
+    outDir: flags.out,
+    authorHandle: handle,
+    ...flags["display-name"] && { authorDisplayName: flags["display-name"] },
+    ...config.author?.url && { authorUrl: config.author.url },
+    ...flags.id && { id: flags.id },
+    allowFindings: bool4(flags["allow-findings"], false)
+  });
+  if (result.findings.length > 0) {
+    process.stderr.write(
+      `
+sanitize: found ${result.findings.length} potential issue(s).
+`
+    );
+    for (const f of result.findings.slice(0, 20)) {
+      process.stderr.write(
+        `  ${f.severity.padEnd(6)} ${f.file}:${f.line}  ${f.rule}  ${f.match}
+`
+      );
+    }
+    if (result.findings.length > 20) {
+      process.stderr.write(`  ... and ${result.findings.length - 20} more.
+`);
+    }
+  }
+  process.stdout.write(
+    `Created handoff ${result.manifest.id} at ${result.bundleDir}
+  branch: ${result.manifest.branch}  baseCommit: ${result.manifest.baseCommit.slice(0, 12)}
+  uncommitted changes: ${result.hasUncommittedChanges ? "yes" : "no"}
+`
+  );
+  return 0;
+}
+async function promptYesNo(message) {
+  const rl = (0, import_node_readline.createInterface)({
+    input: process.stdin,
+    output: process.stderr
+  });
+  try {
+    const answer = await new Promise((resolve2) => {
+      rl.question(`${message} [y/N] `, resolve2);
+    });
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    rl.close();
+  }
+}
+async function runResume(parsed, _config) {
+  const source = parsed.positional[0];
+  if (!source) {
+    process.stderr.write(
+      "error: handoff resume <source> \u2014 pass a git URL, owner/repo, or local bundle path\n"
+    );
+    return 1;
+  }
+  const flags = ResumeSchema.parse(parsed.flags);
+  const apply = bool4(flags.apply, true);
+  const yes = bool4(flags.yes, false);
+  const interactive = Boolean(process.stdin.isTTY) && Boolean(process.stderr.isTTY) && !yes;
+  const warnings = [];
+  const infos = [];
+  const onInfo = (msg) => {
+    infos.push(msg);
+    process.stderr.write(`${msg}
+`);
+  };
+  const confirmApply = apply && interactive ? () => promptYesNo(
+    `Apply this patch to ${flags.repo}? (use --yes to skip in scripts)`
+  ) : void 0;
+  const result = await resumeHandoff({
+    source,
+    repoDir: flags.repo,
+    apply,
+    checkout: bool4(flags.checkout, true),
+    allowDirty: bool4(flags["allow-dirty"], false),
+    onWarn: (msg) => warnings.push(msg),
+    onInfo,
+    ...confirmApply && { confirmApply }
+  });
+  for (const w of warnings) process.stderr.write(`warn: ${w}
+`);
+  process.stdout.write(
+    `
+Handoff: ${result.manifest.id}  by @${result.manifest.author.handle}  (${result.manifest.createdAt})
+Branch: ${result.manifest.branch}  baseCommit: ${result.manifest.baseCommit.slice(0, 12)}
+` + (result.branchSwitched ? `Switched to branch: ${result.branchSwitched}
+` : "") + (result.applied ? `Applied patch to ${flags.repo}
+` : interactive ? `Skipped apply (declined at prompt)
+` : `No patch applied (review only or no diff in bundle)
+`)
+  );
+  void infos;
+  return 0;
+}
+async function runPush(parsed, _config) {
+  const bundleDir = parsed.positional[0];
+  if (!bundleDir) {
+    process.stderr.write(
+      "error: handoff push <bundle-dir> [--remote <url>] [--message <msg>]\n"
+    );
+    return 1;
+  }
+  const flags = PushSchema.parse(parsed.flags);
+  const adapter = new GitStorageAdapter();
+  await adapter.publish(bundleDir, flags.remote, {
+    message: flags.message ?? "claude-loadout: handoff",
+    push: bool4(flags.push, true)
+  });
+  process.stdout.write(
+    `Pushed ${bundleDir} to ${flags.remote}
+`
+  );
+  return 0;
+}
+async function runHandoff(parsed, config) {
+  const sub = parsed.positional[0];
+  const rest = {
+    flags: parsed.flags,
+    positional: parsed.positional.slice(1)
+  };
+  switch (sub) {
+    case "create":
+      return runCreate(rest, config);
+    case "resume":
+      return runResume(rest, config);
+    case "push":
+      return runPush(rest, config);
+    default:
+      process.stderr.write(HANDOFF_USAGE);
+      return 1;
+  }
+}
+
 // src/cli/run.ts
 var SUBCOMMANDS = [
   "export",
@@ -16697,7 +17251,8 @@ var SUBCOMMANDS = [
   "list",
   "show",
   "remove",
-  "update"
+  "update",
+  "handoff"
 ];
 function isSubcommand(value) {
   return value !== void 0 && SUBCOMMANDS.includes(value);
@@ -16712,6 +17267,7 @@ Subcommands:
   show      Print a profile manifest
   update    Re-fetch and re-install an installed profile
   remove    Uninstall a profile
+  handoff   Capture or resume a team handoff (subcommands: create, resume, push)
 `;
 async function runCli(argv) {
   const sub = argv[0];
@@ -16737,6 +17293,8 @@ async function runCli(argv) {
         return await runRemove(parsed, config);
       case "update":
         return await runUpdate(parsed, config);
+      case "handoff":
+        return await runHandoff(parsed, config);
     }
   } catch (err) {
     if (err instanceof ZodError) {

@@ -6,6 +6,29 @@ All notable changes will be documented here. The format is based on [Keep a Chan
 
 _No changes yet._
 
+## [0.2.0] — Team handoff
+
+### Added
+- **`handoff create`** captures the active session into a shareable bundle: AI-drafted `handoff.md` summary + a binary-safe `changes.patch` of every uncommitted change (tracked, staged, and untracked, captured via a throwaway `GIT_INDEX_FILE` so the live index is never touched) + a zod-validated `handoff.json` manifest. Sanitize runs automatically and blocks high-confidence secret findings unless `--allow-findings` is passed.
+- **`handoff resume <source>`** fetches a bundle from a Git URL, `owner/repo` shorthand, or local path. Validates the manifest, refuses to clobber a dirty working tree (`--allow-dirty` to override), checks out the original author's branch by default (`--no-checkout` to stay), and applies the patch via `git apply --3way`. Falls back to plain `git apply` with a visible warning when `manifest.baseCommit` is not in the local history.
+- **`handoff push <bundle> --remote <git-url>`** publishes a handoff bundle: `git init` if needed, commit with `--message`, push to the remote on `main`. Implements `GitStorageAdapter.publish()`, which was a stub in v0.1.
+- **TTY-aware confirmation prompt on `handoff resume`.** When stdin and stderr are both TTYs and `--yes` is not passed, the CLI runs a readline `Apply this patch? [y/N]` prompt before invoking `git apply`. CI / non-interactive callers (slash commands, vitest) auto-apply unchanged.
+- **`git apply --stat` diff stat preview on resume.** The patch's file-level summary (e.g. `work.ts | 2 +-`, `1 file changed, 1 insertion(+), 1 deletion(-)`) prints before the prompt — including under `--no-apply` — so the reviewer sees scope before deciding.
+- **`--yes` / `-y` flag on `handoff resume`** to skip the confirmation prompt explicitly when running interactively but you want to bypass it.
+- **Two-phase `/claude-loadout:handoff-create` slash command.** Phase 1: Claude drafts the summary, saves it to `${TMPDIR}/loadout-handoff-summary.md`, shows it to the user, and **stops**. Phase 2 fires only when the user replies `bundle` / `looks good` / `ship it`; the user can edit the file freely between phases, or reply `cancel` to drop the draft. Eliminates the v0.2-pre-review one-shot summary risk.
+- **Review-then-apply `/claude-loadout:handoff-resume` slash command.** Fetches the bundle, runs `--no-apply` first to show summary + diff stat, asks the user verbatim before applying, then runs with `--yes` only on confirmation.
+- **New schema** `src/manifest/handoff-schema.ts` with `HandoffManifestSchema`, `loadHandoffManifest()`. Schema is decoupled from the v0.1 `ProfileManifestSchema` because the lifecycle differs (handoffs are read-once, profiles are persistent).
+- **`tests/helpers/git-fixture.ts`** for tests that need real git repos: builds a temp repo with N commit batches, optional uncommitted edits, optional remote, and optional bare-repo target.
+- **CLI integration round-trip** test (`handoff create → push → resume`) lives in `tests/cli/run.test.ts`.
+
+### Changed
+- **`GitStorageAdapter.publish()`** is no longer a stub. v0.1 left it `throw new Error("not implemented")`; v0.2 implements init + add + commit + push, with safe fallbacks (default user identity, idempotent remote setup).
+- **`tests/helpers/git-fixture.ts:makeBareRepo()`** initialises bare repos with `--initial-branch=main` so a clone after a `main` push checks out cleanly without a "remote HEAD refers to nonexistent ref" warning.
+
+### Notes
+- The session-end hook (`src/hooks/session-end.ts`) stays a stub. Auto-archive on every session is deferred to a later release; the v0.2 capture model is deliberately manual so users control when (and what) gets handed off.
+- Test count: 67 → 106 (39 new across schema, capture, resume with branch-checkout / base-missing / dirty-tree / confirm-apply / diff-stat paths, publish, and the CLI round-trip).
+
 ## [0.1.3] — Provenance annotation for plugin-derived items
 
 ### Added

@@ -121,6 +121,78 @@ The same operations are exposed as `/loadout *` slash commands once the plugin i
 | `claude-loadout show <alias>` | Pretty-print the manifest of an installed loadout. |
 | `claude-loadout update <alias>` | Re-fetch the recorded source. Stages to `<alias>.update-staging` and atomic-swaps so a failed update never corrupts the existing install. |
 | `claude-loadout remove <alias>` | Uninstall. Aliases are checked against path traversal — you cannot escape `profilesDir`. |
+| `claude-loadout handoff create` | Bundle the current session as a handoff: AI-drafted summary + binary-safe diff of every uncommitted change + validated manifest. Sanitize runs automatically. |
+| `claude-loadout handoff resume <src>` | Fetch a teammate's handoff bundle (Git URL / `owner/repo` / local path), show the summary + diff, prompt before applying via `git apply --3way`. Auto-checks out the author's branch by default. |
+| `claude-loadout handoff push <bundle> --remote <url>` | Init+commit+push a handoff bundle to a Git remote. |
+
+---
+
+## Team handoff (v0.2)
+
+![Claude Loadout handoff — Alice drafts a handoff, Claude bundles it, Bob picks it up and reviews before applying](./docs/handoff-hero.png)
+
+Handing off in-progress work between teammates is the second feature shipped on top of the v0.1 plumbing. Use it when you're logging off mid-task and want a teammate to pick up exactly where you stopped — uncommitted edits, partial mental model, and all.
+
+> The whole point: the **AI summary** is drafted from your live session context (what was discussed, what was tried, what's pending) — something you can't reproduce by piping `git diff` into Slack. Everything else is convenience around that.
+
+### Alice publishes a handoff (two-phase, review-before-bundle)
+
+```bash
+# Inside Claude Code:
+/claude-loadout:handoff-create --out ./handoff-thursday --author alice
+```
+
+Phase 1 — Claude reads the session and drafts a structured `handoff.md` (what was done, what's pending, files touched, decisions, suggested next move). Then it **stops** and shows Alice the draft.
+
+Alice can edit the draft directly in her editor (it's plain markdown at `${TMPDIR}/loadout-handoff-summary.md`), or accept as-is.
+
+Phase 2 — Alice replies `bundle` (or `cancel` to drop it). Only then does the CLI capture the git diff, run sanitize, and write the validated bundle. No surprise commits, no one-shot summary stuck with whatever Claude produced first.
+
+```bash
+# Push it where Bob can find it:
+claude-loadout handoff push ./handoff-thursday --remote git@github.com:alice/handoffs.git
+```
+
+### Bob picks it up (review-then-apply)
+
+```bash
+# Inside Claude Code:
+/claude-loadout:handoff-resume git@github.com:alice/handoffs.git --repo .
+```
+
+Bob's flow is symmetric: the CLI fetches the bundle, validates the manifest, and runs `git apply --stat` so Bob sees scope before deciding:
+
+```
+work.ts |    2 +-
+src/auth/middleware.ts | 47 +++++++++++++++++++--
+2 files changed, 45 insertions(+), 4 deletions(-)
+```
+
+Then Claude surfaces Alice's full summary, and **explicitly asks Bob** before applying. Bob types `y`; the patch lands; Claude proposes the first concrete next step from Alice's "what's pending" list.
+
+Same flow from a terminal: `claude-loadout handoff resume <url>` prints the diff stat and prompts `Apply this patch? [y/N]` when stdin is a TTY. Pass `--yes` to bypass in scripts; pass `--no-apply` to review without applying.
+
+### Pipeline at a glance
+
+![Claude Loadout handoff pipeline — session → two-phase create → sanitized bundle → git remote → review-then-apply](./docs/handoff-flow.png)
+
+### What's in the bundle
+
+```
+handoff-thursday/
+   handoff.md       ← AI-drafted summary, reviewed and edited by Alice
+   changes.patch    ← binary-safe diff of every uncommitted change (tracked + staged + untracked)
+   handoff.json     ← zod-validated manifest: id, branch, baseCommit, repoUrl, author, sanitized stats
+```
+
+### Safety defaults
+
+- **Two-phase create** — Claude never auto-bundles a draft; Alice always gets a chance to edit or cancel.
+- **Diff stat preview** — Bob sees how big the patch is before he says yes.
+- **Confirm-before-apply** — `handoff resume` prompts on TTY by default; non-interactive callers (CI, slash commands) auto-apply unchanged for ergonomics.
+- **Sanitize on create** — high-confidence secret findings (AWS / GitHub PAT / Anthropic / OpenAI keys) block the bundle unless you re-run with `--allow-findings`.
+- **Dirty-tree refusal** — `handoff resume` refuses to clobber uncommitted work unless `--allow-dirty` is passed.
+- **Auto-checkout with smart fallback** — by default Bob is moved to Alice's branch; if Alice's `baseCommit` isn't in Bob's local history, `--3way` degrades to plain `git apply` with a visible warning rather than silently failing.
 
 ---
 
@@ -180,16 +252,21 @@ The sanitize pass is **best-effort, not a security guarantee**. Always review yo
 ```
 src/
 ├── manifest/
-│   ├── schema.ts          ← zod schema for profile.json (single source of truth)
+│   ├── schema.ts              ← zod schema for profile.json (loadouts)
+│   ├── handoff-schema.ts      ← zod schema for handoff.json (v0.2)
 │   └── validator.ts
 ├── adapters/
 │   ├── storage.interface.ts   ← StorageAdapter contract
-│   └── git-storage.ts         ← Git-backed implementation (v0.1 default)
+│   └── git-storage.ts         ← Git-backed implementation (fetch + publish)
 ├── modules/
 │   ├── export/index.ts        ← Module A — bundle current config
 │   ├── sanitize/index.ts      ← Module B — secret/path scanner + applyRedactions
 │   ├── install/index.ts       ← Module C — fetch, validate, namespaced install
-│   └── manage/index.ts        ← Module D — list / show / update (atomic) / remove
+│   ├── manage/index.ts        ← Module D — list / show / update (atomic) / remove
+│   └── handoff/               ← Module E (v0.2) — team handoff
+│       ├── index.ts           ← createHandoff: capture summary + diff + manifest
+│       ├── git-state.ts       ← branch / baseCommit / repoUrl + binary-safe diff
+│       └── resume.ts          ← resumeHandoff: validate + checkout + apply
 ├── config/
 │   └── loader.ts              ← Per-project claude-loadout.config.json with defaults
 ├── cli/
@@ -197,7 +274,7 @@ src/
 │   ├── run.ts                 ← runCli(argv): Promise<number>
 │   └── handlers/              ← One zod-validated handler per subcommand
 ├── hooks/
-│   └── session-end.ts         ← Stub for v0.2 team-handoff
+│   └── session-end.ts         ← Stub — SessionEnd auto-archive (future)
 └── cli.ts                     ← Process entry point
 ```
 
@@ -214,11 +291,9 @@ src/
 
 ## Status & roadmap
 
-**v0.1 (current) — shipped:** all four modules implemented, CLI dispatcher, config loader, vitest suite (55 tests, all green), production build via `tsc`.
+**v0.2.0 (current) — shipped:** v0.1's loadout pipeline (export / sanitize / install / manage) **plus** team handoff: AI-drafted summary with two-phase review, `git apply --3way` resume with diff stat preview and TTY confirmation, `GitStorageAdapter.publish()`. 106 tests, production bundle via esbuild (`bin/cli.cjs`).
 
-**v0.2 (planned, designed):** team-handoff archive (Stop hook), Slack notifications, hook import with consent flow, GitHub-topic-based discovery site.
-
-**v0.3+:** versioning + pinning, loadout composition, `claude-loadout diff`, starter templates.
+**v0.3+:** SessionEnd auto-archive, Slack/Discord notifications, hook import with consent flow, GitHub-topic-based discovery site, versioning + pinning, loadout composition, `claude-loadout diff`, starter templates.
 
 **v1.0:** cloud storage adapters, approval gates, peer review.
 
