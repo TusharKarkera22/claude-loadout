@@ -11246,6 +11246,21 @@ Review before publishing. Run: claude-loadout sanitize ${result.outputDir}
     `Exported ${result.itemCount} item(s) to ${result.outputDir}
 `
   );
+  const slug = result.manifest.name;
+  const authorHandle = result.manifest.author.handle;
+  process.stdout.write(
+    `
+Next steps:
+  1. Review (optional): claude-loadout sanitize ${result.outputDir}
+  2. Push to a Git remote so teammates can install it:
+       cd ${result.outputDir}
+       git init && git add . && git commit -m "claude-loadout: ${slug}"
+       git remote add origin git@github.com:${authorHandle}/${slug}.git
+       git push -u origin main
+  3. Share the URL \u2014 anyone runs:
+       /claude-loadout:profile-install ${authorHandle}/${slug}
+`
+  );
   return 0;
 }
 
@@ -17141,6 +17156,18 @@ sanitize: found ${result.findings.length} potential issue(s).
   uncommitted changes: ${result.hasUncommittedChanges ? "yes" : "no"}
 `
   );
+  const handleSlug = result.manifest.author.handle.toLowerCase();
+  process.stdout.write(
+    `
+Next steps:
+  1. (Optional) Review: cat ${result.bundleDir}/handoff.md
+  2. Push to a Git remote your teammate can read:
+       claude-loadout handoff push ${result.bundleDir} \\
+         --remote git@github.com:${handleSlug}/handoffs.git
+  3. Share that URL. Your teammate runs:
+       /claude-loadout:handoff-resume git@github.com:${handleSlug}/handoffs.git
+`
+  );
   return 0;
 }
 async function promptYesNo(message) {
@@ -17220,6 +17247,15 @@ async function runPush(parsed, _config) {
   });
   process.stdout.write(
     `Pushed ${bundleDir} to ${flags.remote}
+`
+  );
+  process.stdout.write(
+    `
+Share this URL with your teammate:
+  /claude-loadout:handoff-resume ${flags.remote}
+
+Or from a terminal:
+  claude-loadout handoff resume ${flags.remote}
 `
   );
   return 0;

@@ -84,6 +84,19 @@ async function runCreate(parsed: ParsedFlags, config: Config): Promise<number> {
       `  branch: ${result.manifest.branch}  baseCommit: ${result.manifest.baseCommit.slice(0, 12)}\n` +
       `  uncommitted changes: ${result.hasUncommittedChanges ? "yes" : "no"}\n`,
   );
+
+  // Next steps — the bundle on disk is useless until it's shared. Tell the
+  // user how to push it and how the teammate picks it up.
+  const handleSlug = result.manifest.author.handle.toLowerCase();
+  process.stdout.write(
+    `\nNext steps:\n` +
+      `  1. (Optional) Review: cat ${result.bundleDir}/handoff.md\n` +
+      `  2. Push to a Git remote your teammate can read:\n` +
+      `       claude-loadout handoff push ${result.bundleDir} \\\n` +
+      `         --remote git@github.com:${handleSlug}/handoffs.git\n` +
+      `  3. Share that URL. Your teammate runs:\n` +
+      `       /claude-loadout:handoff-resume git@github.com:${handleSlug}/handoffs.git\n`,
+  );
   return 0;
 }
 
@@ -189,6 +202,15 @@ async function runPush(parsed: ParsedFlags, _config: Config): Promise<number> {
 
   process.stdout.write(
     `Pushed ${bundleDir} to ${flags.remote}\n`,
+  );
+
+  // Next step — share the URL with the teammate, with the exact command
+  // they'll need to paste.
+  process.stdout.write(
+    `\nShare this URL with your teammate:\n` +
+      `  /claude-loadout:handoff-resume ${flags.remote}\n` +
+      `\nOr from a terminal:\n` +
+      `  claude-loadout handoff resume ${flags.remote}\n`,
   );
   return 0;
 }

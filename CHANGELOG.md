@@ -6,6 +6,16 @@ All notable changes will be documented here. The format is based on [Keep a Chan
 
 _No changes yet._
 
+## [0.2.1] — Next-steps guidance after every "create" command
+
+### Changed
+- **`claude-loadout export` now prints a Next steps block** showing the exact `git init && git push` sequence and the resulting `/claude-loadout:profile-install <handle>/<name>` URL teammates would run. Previously the success message was a single "Exported N items to ./dir" line and users had no signpost for what to do with the bundle.
+- **`claude-loadout handoff create` prints Next steps** with the `handoff push --remote …` command and the matching `/claude-loadout:handoff-resume …` URL the teammate uses.
+- **`claude-loadout handoff push` prints the share URL** verbatim with both the slash-command form and the terminal form, so the user can copy-paste either into their teammate's chat.
+
+### Notes
+- No CLI behavior changes; this release only adds informational stdout footers on success paths. Tests unchanged at 106/106.
+
 ## [0.2.0] — Team handoff
 
 ### Added

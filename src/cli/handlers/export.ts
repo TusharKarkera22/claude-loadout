@@ -125,5 +125,21 @@ export async function runExport(
   process.stdout.write(
     `Exported ${result.itemCount} item(s) to ${result.outputDir}\n`,
   );
+
+  // Next steps — most users won't know what to do with the bundle on disk.
+  // Tell them the exact commands to publish + share.
+  const slug = result.manifest.name;
+  const authorHandle = result.manifest.author.handle;
+  process.stdout.write(
+    `\nNext steps:\n` +
+      `  1. Review (optional): claude-loadout sanitize ${result.outputDir}\n` +
+      `  2. Push to a Git remote so teammates can install it:\n` +
+      `       cd ${result.outputDir}\n` +
+      `       git init && git add . && git commit -m "claude-loadout: ${slug}"\n` +
+      `       git remote add origin git@github.com:${authorHandle}/${slug}.git\n` +
+      `       git push -u origin main\n` +
+      `  3. Share the URL — anyone runs:\n` +
+      `       /claude-loadout:profile-install ${authorHandle}/${slug}\n`,
+  );
   return 0;
 }

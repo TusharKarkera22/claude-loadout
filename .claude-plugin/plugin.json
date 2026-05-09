@@ -1,6 +1,6 @@
 {
   "name": "claude-loadout",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Claude Loadout — share your Claude Code setup like dotfiles. Bundle and install loadouts of CLAUDE.md, skills, slash commands, and sub-agents.",
   "author": {
     "name": "Tushar"
